@@ -17,6 +17,7 @@ module Devise
   autoload :TokenGenerator,     'devise/token_generator'
 
   module Controllers
+    autoload :Generator,        'devise/controllers/generator'
     autoload :Helpers,          'devise/controllers/helpers'
     autoload :Rememberable,     'devise/controllers/rememberable'
     autoload :ScopedViews,      'devise/controllers/scoped_views'
@@ -294,7 +295,7 @@ module Devise
 
   # If within the same application, Devise is to be mounted on different engines.
   mattr_accessor :controller_scopes
-  @@controller_scopes = :devise
+  @@controller_scopes = [:devise]
 
   # Default way to setup Devise. Run rails generate devise_install to create
   # a fresh initializer with all configuration values.

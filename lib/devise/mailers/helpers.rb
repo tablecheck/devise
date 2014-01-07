@@ -60,6 +60,7 @@ module Devise
 
       def template_paths
         template_path = _prefixes.dup
+        template_path.unshift "#{Devise.router_name}/devise/mailer"   if Devise.router_name
         template_path.unshift "#{@devise_mapping.scoped_path}/mailer" if self.class.scoped_views?
         template_path
       end

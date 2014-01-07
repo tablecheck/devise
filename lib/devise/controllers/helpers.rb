@@ -79,7 +79,7 @@ module Devise
       #
       #   before_filter :my_filter, :unless => :devise_controller?
       def devise_controller?
-        is_a?(DeviseController)
+        self.class.included_modules.include?(::Devise::Mixins::Base)
       end
 
       # Setup a param sanitizer to filter parameters using strong_parameters. See
