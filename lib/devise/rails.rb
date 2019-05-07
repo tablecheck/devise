@@ -24,7 +24,7 @@ module Devise
       Devise.include_helpers(Devise::Controllers)
     end
 
-    initializer "devise.omniauth" do |app|
+    initializer "devise.omniauth", after: :load_config_initializers, before: :build_middleware_stack do |app|
       Devise.omniauth_configs.each do |provider, config|
         app.middleware.use config.strategy_class, *config.args do |strategy|
           config.strategy = strategy
@@ -36,7 +36,13 @@ module Devise
       end
     end
 
-    initializer "devise.secret_key" do
+    initializer "devise.secret_key" do |app|
+      if app.respond_to?(:secrets)
+        Devise.secret_key ||= app.secrets.secret_key_base
+      elsif app.config.respond_to?(:secret_key_base)
+        Devise.secret_key ||= app.config.secret_key_base
+      end
+
       Devise.token_generator ||=
         if secret_key = Devise.secret_key
           Devise::TokenGenerator.new(

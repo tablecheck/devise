@@ -17,7 +17,7 @@ module Devise
           yield resource if block_given?
 
           if successfully_sent?(resource)
-            respond_with({}, :location => after_sending_unlock_instructions_path_for(resource))
+            respond_with({}, location: after_sending_unlock_instructions_path_for(resource))
           else
             respond_with(resource)
           end
@@ -32,21 +32,25 @@ module Devise
             set_flash_message :notice, :unlocked if is_flashing_format?
             respond_with_navigational(resource){ redirect_to after_unlock_path_for(resource) }
           else
-            respond_with_navigational(resource.errors, :status => :unprocessable_entity){ render :new }
+            respond_with_navigational(resource.errors, status: :unprocessable_entity){ render :new }
           end
         end
 
         protected
 
-          # The path used after sending unlock password instructions
-          def after_sending_unlock_instructions_path_for(resource)
-            new_session_path(resource) if is_navigational_format?
-          end
+        # The path used after sending unlock password instructions
+        def after_sending_unlock_instructions_path_for(resource)
+          new_session_path(resource) if is_navigational_format?
+        end
 
-          # The path used after unlocking the resource
-          def after_unlock_path_for(resource)
-            new_session_path(resource)  if is_navigational_format?
-          end
+        # The path used after unlocking the resource
+        def after_unlock_path_for(resource)
+          new_session_path(resource)  if is_navigational_format?
+        end
+
+        def translation_scope
+          'devise.unlocks'
+        end
 
       end
     end

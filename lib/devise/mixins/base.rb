@@ -9,12 +9,28 @@ module Devise
         helper DeviseHelper
 
         helpers = %w(resource scope_name resource_name signed_in_resource
-                     resource_class resource_params devise_mapping)
-        hide_action *helpers
-        helper_method *helpers
+               resource_class resource_params devise_mapping)
+        helper_method(*helpers)
 
         prepend_before_filter :assert_is_devise_resource!
         respond_to :html if mimes_for_respond_to.empty?
+
+        # Override prefixes to consider the scoped view.
+        # Notice we need to check for the request due to a bug in
+        # Action Controller tests that forces _prefixes to be
+        # loaded before even having a request object.
+        #
+        # This method should be public as it is is in ActionPack
+        # itself. Changing its visibility may break other gems.
+        def _prefixes #:nodoc:
+          @_prefixes ||= if self.class.scoped_views? && request && devise_mapping
+                           ["#{devise_mapping.scoped_path}/#{controller_name}"] + super
+                         else
+                           super
+                         end
+        end
+
+        protected
 
         # Gets the actual resource stored in the instance variable
         def resource
@@ -34,7 +50,7 @@ module Devise
 
         # Returns a signed in resource from session (if one exists)
         def signed_in_resource
-          warden.authenticate(:scope => resource_name)
+          warden.authenticate(scope: resource_name)
         end
 
         # Attempt to find the mapped route for devise based on request path
@@ -42,40 +58,24 @@ module Devise
           @devise_mapping ||= request.env["devise.mapping"]
         end
 
-        # Override prefixes to consider the scoped view.
-        # Notice we need to check for the request due to a bug in
-        # Action Controller tests that forces _prefixes to be
-        # loaded before even having a request object.
-        def _prefixes #:nodoc:
-          @_prefixes ||= if self.class.scoped_views? && request && devise_mapping
-            super.unshift("#{devise_mapping.scoped_path}/#{controller_name}")
-          else
-            super
-          end
-        end
-
-        hide_action :_prefixes
-
-        protected
-
         # Checks whether it's a devise mapped resource or not.
         def assert_is_devise_resource! #:nodoc:
           unknown_action! <<-MESSAGE unless devise_mapping
-      Could not find devise mapping for path #{request.fullpath.inspect}.
-      This may happen for two reasons:
+Could not find devise mapping for path #{request.fullpath.inspect}.
+This may happen for two reasons:
 
-      1) You forgot to wrap your route inside the scope block. For example:
+1) You forgot to wrap your route inside the scope block. For example:
 
-        devise_scope :user do
-          get "/some/route" => "some_devise_controller"
-        end
+  devise_scope :user do
+    get "/some/route" => "some_devise_controller"
+  end
 
-      2) You are testing a Devise controller bypassing the router.
-         If so, you can explicitly tell Devise which mapping to use:
+2) You are testing a Devise controller bypassing the router.
+   If so, you can explicitly tell Devise which mapping to use:
 
-         @request.env["devise.mapping"] = Devise.mappings[:user]
+   @request.env["devise.mapping"] = Devise.mappings[:user]
 
-      MESSAGE
+          MESSAGE
         end
 
         # Returns real navigational formats which are supported by Rails
@@ -96,18 +96,18 @@ module Devise
         # Helper for use in before_filters where no authentication is required.
         #
         # Example:
-        #   before_filter :require_no_authentication, :only => :new
+        #   before_filter :require_no_authentication, only: :new
         def require_no_authentication
           assert_is_devise_resource!
           return unless is_navigational_format?
           no_input = devise_mapping.no_input_strategies
 
           authenticated = if no_input.present?
-            args = no_input.dup.push :scope => resource_name
-            warden.authenticate?(*args)
-          else
-            warden.authenticated?(resource_name)
-          end
+                            args = no_input.dup.push scope: resource_name
+                            warden.authenticate?(*args)
+                          else
+                            warden.authenticated?(resource_name)
+                          end
 
           if authenticated && resource = warden.user(resource_name)
             flash[:alert] = I18n.t("devise.failure.already_authenticated")
@@ -120,11 +120,11 @@ module Devise
         # and instructions were sent.
         def successfully_sent?(resource)
           notice = if Devise.paranoid
-            resource.errors.clear
-            :send_paranoid_instructions
-          elsif resource.errors.empty?
-            :send_instructions
-          end
+                     resource.errors.clear
+                     :send_paranoid_instructions
+                   elsif resource.errors.empty?
+                     :send_instructions
+                   end
 
           if notice
             set_flash_message :notice, notice if is_flashing_format?
@@ -133,8 +133,11 @@ module Devise
         end
 
         # Sets the flash message with :key, using I18n. By default you are able
-        # to setup your messages using specific resource scope, and if no one is
-        # found we look to default scope.
+        # to setup your messages using specific resource scope, and if no message is
+        # found we look to the default scope. Set the "now" options key to a true
+        # value to populate the flash.now hash in lieu of the default flash hash (so
+        # the flash message will be available to the current action instead of the
+        # next action).
         # Example (i18n locale file):
         #
         #   en:
@@ -148,7 +151,18 @@ module Devise
         # available.
         def set_flash_message(key, kind, options = {})
           message = find_message(kind, options)
-          flash[key] = message if message.present?
+          if options[:now]
+            flash.now[key] = message if message.present?
+          else
+            flash[key] = message if message.present?
+          end
+        end
+
+        # Sets minimum password length to show to user
+        def set_minimum_password_length
+          if devise_mapping.validatable?
+            @minimum_password_length = resource_class.password_length.min
+          end
         end
 
         def devise_i18n_options(options)
@@ -157,11 +171,18 @@ module Devise
 
         # Get message for given
         def find_message(kind, options = {})
-          options[:scope] = "devise.#{controller_name}"
+          options[:scope] ||= translation_scope
           options[:default] = Array(options[:default]).unshift(kind.to_sym)
           options[:resource_name] = resource_name
           options = devise_i18n_options(options)
           I18n.t("#{options[:resource_name]}.#{kind}", options)
+        end
+
+        # Controllers inheriting DeviseController are advised to override this
+        # method so that other controllers inheriting from them would use
+        # existing translations.
+        def translation_scope
+          "devise.#{controller_name}"
         end
 
         def clean_up_passwords(object)
@@ -178,6 +199,7 @@ module Devise
           params.fetch(resource_name, {})
         end
 
+        ActiveSupport.run_load_hooks(:devise_controller, self)
       end
     end
   end

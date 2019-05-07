@@ -33,7 +33,43 @@ class ViewsGeneratorTest < Rails::Generators::TestCase
 
   test "Assert views with markerb" do
     run_generator %w(--markerb)
-    assert_files nil, :mail_template_engine => "markerb"
+    assert_files nil, mail_template_engine: "markerb"
+  end
+
+
+  test "Assert only views within specified directories" do
+    run_generator %w(-v sessions registrations)
+    assert_file "app/views/devise/sessions/new.html.erb"
+    assert_file "app/views/devise/registrations/new.html.erb"
+    assert_file "app/views/devise/registrations/edit.html.erb"
+    assert_no_file "app/views/devise/confirmations/new.html.erb"
+    assert_no_file "app/views/devise/mailer/confirmation_instructions.html.erb"
+  end
+
+  test "Assert mailer specific directory with simple form" do
+    run_generator %w(-v mailer -b simple_form_for)
+    assert_file "app/views/devise/mailer/confirmation_instructions.html.erb"
+    assert_file "app/views/devise/mailer/reset_password_instructions.html.erb"
+    assert_file "app/views/devise/mailer/unlock_instructions.html.erb"
+  end
+
+  test "Assert specified directories with scope" do
+    run_generator %w(users -v sessions)
+    assert_file "app/views/users/sessions/new.html.erb"
+    assert_no_file "app/views/users/confirmations/new.html.erb"
+  end
+
+  test "Assert specified directories with simple form" do
+    run_generator %w(-v registrations -b simple_form_for)
+    assert_file "app/views/devise/registrations/new.html.erb", /simple_form_for/
+    assert_no_file "app/views/devise/confirmations/new.html.erb"
+    end
+
+  test "Assert specified directories with markerb" do
+    run_generator %w(--markerb -v passwords mailer)
+    assert_file "app/views/devise/passwords/new.html.erb"
+    assert_no_file "app/views/devise/confirmations/new.html.erb"
+    assert_file "app/views/devise/mailer/reset_password_instructions.markerb"
   end
 
   def assert_files(scope = nil, options={})
@@ -49,7 +85,7 @@ class ViewsGeneratorTest < Rails::Generators::TestCase
     assert_file "app/views/#{scope}/registrations/new.html.erb"
     assert_file "app/views/#{scope}/registrations/edit.html.erb"
     assert_file "app/views/#{scope}/sessions/new.html.erb"
-    assert_file "app/views/#{scope}/shared/_links.erb"
+    assert_file "app/views/#{scope}/shared/_links.html.erb"
     assert_file "app/views/#{scope}/unlocks/new.html.erb"
   end
 

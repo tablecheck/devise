@@ -55,7 +55,7 @@ class ResetPasswordInstructionsTest < ActionMailer::TestCase
 
   test 'custom mailer renders parent mailer template' do
     Devise.mailer = 'Users::Mailer'
-    assert_not_blank mail.body.encoded
+    assert_present mail.body.encoded
   end
 
   test 'setup reply to as copy from sender' do
@@ -63,13 +63,13 @@ class ResetPasswordInstructionsTest < ActionMailer::TestCase
   end
 
   test 'setup subject from I18n' do
-    store_translations :en, :devise => { :mailer => { :reset_password_instructions => { :subject => 'Reset instructions' } } } do
+    store_translations :en, devise: { mailer: { reset_password_instructions: { subject: 'Reset instructions' } } } do
       assert_equal 'Reset instructions', mail.subject
     end
   end
 
   test 'subject namespaced by model' do
-    store_translations :en, :devise => { :mailer => { :reset_password_instructions => { :user_subject => 'User Reset Instructions' } } } do
+    store_translations :en, devise: { mailer: { reset_password_instructions: { user_subject: 'User Reset Instructions' } } } do
       assert_equal 'User Reset Instructions', mail.subject
     end
   end
@@ -79,9 +79,9 @@ class ResetPasswordInstructionsTest < ActionMailer::TestCase
   end
 
   test 'body should have link to confirm the account' do
-    host = ActionMailer::Base.default_url_options[:host]
+    host, port = ActionMailer::Base.default_url_options.values_at :host, :port
 
-    if mail.body.encoded =~ %r{<a href=\"http://#{host}/users/password/edit\?reset_password_token=([^"]+)">}
+    if mail.body.encoded =~ %r{<a href=\"http://#{host}:#{port}/users/password/edit\?reset_password_token=([^"]+)">}
       assert_equal Devise.token_generator.digest(user.class, :reset_password_token, $1), user.reset_password_token
     else
       flunk "expected reset password url regex to match"
@@ -89,7 +89,7 @@ class ResetPasswordInstructionsTest < ActionMailer::TestCase
   end
 
   test 'mailer sender accepts a proc' do
-    swap Devise, :mailer_sender => proc { "another@example.com" } do
+    swap Devise, mailer_sender: proc { "another@example.com" } do
       assert_equal ['another@example.com'], mail.from
     end
   end

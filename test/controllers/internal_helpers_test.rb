@@ -13,16 +13,16 @@ class HelpersTest < ActionController::TestCase
   end
 
   test 'get resource name from env' do
-    assert_equal :user, @controller.resource_name
+    assert_equal :user, @controller.send(:resource_name)
   end
 
   test 'get resource class from env' do
-    assert_equal User, @controller.resource_class
+    assert_equal User, @controller.send(:resource_class)
   end
 
   test 'get resource instance variable from env' do
     @controller.instance_variable_set(:@user, user = User.new)
-    assert_equal user, @controller.resource
+    assert_equal user, @controller.send(:resource)
   end
 
   test 'set resource instance variable from env' do
@@ -51,11 +51,11 @@ class HelpersTest < ActionController::TestCase
   end
 
   test 'resources methods are not controller actions' do
-    assert @controller.class.action_methods.empty?
+    assert @controller.class.action_methods.delete_if { |m| m.include? 'commenter' }.empty?
   end
 
   test 'require no authentication tests current mapping' do
-    @mock_warden.expects(:authenticate?).with(:rememberable, :scope => :user).returns(true)
+    @mock_warden.expects(:authenticate?).with(:rememberable, scope: :user).returns(true)
     @mock_warden.expects(:user).with(:user).returns(User.new)
     @controller.expects(:redirect_to).with(root_path)
     @controller.send :require_no_authentication
@@ -71,7 +71,7 @@ class HelpersTest < ActionController::TestCase
   end
 
   test 'require no authentication sets a flash message' do
-    @mock_warden.expects(:authenticate?).with(:rememberable, :scope => :user).returns(true)
+    @mock_warden.expects(:authenticate?).with(:rememberable, scope: :user).returns(true)
     @mock_warden.expects(:user).with(:user).returns(User.new)
     @controller.expects(:redirect_to).with(root_path)
     @controller.send :require_no_authentication
@@ -79,8 +79,8 @@ class HelpersTest < ActionController::TestCase
   end
 
   test 'signed in resource returns signed in resource for current scope' do
-    @mock_warden.expects(:authenticate).with(:scope => :user).returns(User.new)
-    assert_kind_of User, @controller.signed_in_resource
+    @mock_warden.expects(:authenticate).with(scope: :user).returns(User.new)
+    assert_kind_of User, @controller.send(:signed_in_resource)
   end
 
   test 'is a devise controller' do
@@ -99,22 +99,28 @@ class HelpersTest < ActionController::TestCase
     assert_equal 'non-blank', flash[:notice]
   end
 
+  test 'issues non-blank flash.now messages normally' do
+    I18n.stubs(:t).returns('non-blank')
+    @controller.send :set_flash_message, :notice, :send_instructions, { now: true }
+    assert_equal 'non-blank', flash.now[:notice]
+  end
+
   test 'uses custom i18n options' do
-    @controller.stubs(:devise_i18n_options).returns(:default => "devise custom options")
+    @controller.stubs(:devise_i18n_options).returns(default: "devise custom options")
     @controller.send :set_flash_message, :notice, :invalid_i18n_messagesend_instructions
     assert_equal 'devise custom options', flash[:notice]
   end
 
   test 'allows custom i18n options to override resource_name' do
     I18n.expects(:t).with("custom_resource_name.confirmed", anything)
-    @controller.stubs(:devise_i18n_options).returns(:resource_name => "custom_resource_name")
+    @controller.stubs(:devise_i18n_options).returns(resource_name: "custom_resource_name")
     @controller.send :set_flash_message, :notice, :confirmed
   end
 
   test 'navigational_formats not returning a wild card' do
     MyController.send(:public, :navigational_formats)
 
-    swap Devise, :navigational_formats => ['*/*', :html] do
+    swap Devise, navigational_formats: ['*/*', :html] do
       assert_not @controller.navigational_formats.include?("*/*")
     end
 

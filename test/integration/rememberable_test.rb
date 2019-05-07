@@ -1,10 +1,15 @@
 require 'test_helper'
 
 class RememberMeTest < ActionDispatch::IntegrationTest
+  if (Rails::VERSION::MAJOR < 4) || (Rails::VERSION::MAJOR >= 4 && Rails::VERSION::MINOR < 1)
+    require 'time_helpers'
+    include ActiveSupport::Testing::TimeHelpers
+  end
+
   def create_user_and_remember(add_to_token='')
     user = create_user
     user.remember_me!
-    raw_cookie = User.serialize_into_cookie(user).tap { |a| a.last << add_to_token }
+    raw_cookie = User.serialize_into_cookie(user).tap { |a| a[1] << add_to_token }
     cookies['remember_user_token'] = generate_signed_cookie(raw_cookie)
     user
   end
@@ -31,7 +36,7 @@ class RememberMeTest < ActionDispatch::IntegrationTest
   end
 
   test 'handle unverified requests gets rid of caches' do
-    swap ApplicationController, :allow_forgery_protection => true do
+    swap ApplicationController, allow_forgery_protection: true do
       post exhibit_user_url(1)
       assert_not warden.authenticated?(:user)
 
@@ -43,19 +48,19 @@ class RememberMeTest < ActionDispatch::IntegrationTest
   end
 
   test 'handle unverified requests does not create cookies on sign in' do
-    swap ApplicationController, :allow_forgery_protection => true do
+    swap ApplicationController, allow_forgery_protection: true do
       get new_user_session_path
       assert request.session[:_csrf_token]
 
-      post user_session_path, :authenticity_token => "oops", :user =>
-           { email: "jose.valim@gmail.com", password: "123456", :remember_me => "1" }
+      post user_session_path, authenticity_token: "oops", user:
+           { email: "jose.valim@gmail.com", password: "123456", remember_me: "1" }
       assert_not warden.authenticated?(:user)
       assert_not request.cookies['remember_user_token']
     end
   end
 
   test 'generate remember token after sign in' do
-    sign_in_as_user :remember_me => true
+    sign_in_as_user remember_me: true
     assert request.cookies['remember_user_token']
   end
 
@@ -63,15 +68,15 @@ class RememberMeTest < ActionDispatch::IntegrationTest
     # We test this by asserting the cookie is not sent after the redirect
     # since we changed the domain. This is the only difference with the
     # previous test.
-    swap Devise, :rememberable_options => { :domain => "omg.somewhere.com" } do
-      sign_in_as_user :remember_me => true
+    swap Devise, rememberable_options: { domain: "omg.somewhere.com" } do
+      sign_in_as_user remember_me: true
       assert_nil request.cookies["remember_user_token"]
     end
   end
 
   test 'generate remember token with a custom key' do
-    swap Devise, :rememberable_options => { :key => "v1lat_token" } do
-      sign_in_as_user :remember_me => true
+    swap Devise, rememberable_options: { key: "v1lat_token" } do
+      sign_in_as_user remember_me: true
       assert request.cookies["v1lat_token"]
     end
   end
@@ -79,7 +84,7 @@ class RememberMeTest < ActionDispatch::IntegrationTest
   test 'generate remember token after sign in setting session options' do
     begin
       Rails.configuration.session_options[:domain] = "omg.somewhere.com"
-      sign_in_as_user :remember_me => true
+      sign_in_as_user remember_me: true
       assert_nil request.cookies["remember_user_token"]
     ensure
       Rails.configuration.session_options.delete(:domain)
@@ -92,7 +97,6 @@ class RememberMeTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert warden.authenticated?(:user)
     assert warden.user(:user) == user
-    assert_match /remember_user_token[^\n]*HttpOnly/, response.headers["Set-Cookie"], "Expected Set-Cookie header in response to set HttpOnly flag on remember_user_token cookie."
   end
 
   test 'remember the user before sign up and redirect them to their home' do
@@ -103,18 +107,52 @@ class RememberMeTest < ActionDispatch::IntegrationTest
   end
 
   test 'does not extend remember period through sign in' do
-    swap Devise, :extend_remember_period => true, :remember_for => 1.year do
+    swap Devise, extend_remember_period: true, remember_for: 1.year do
       user = create_user
       user.remember_me!
 
       user.remember_created_at = old = 10.days.ago
       user.save
 
-      sign_in_as_user :remember_me => true
+      sign_in_as_user remember_me: true
       user.reload
 
       assert warden.user(:user) == user
       assert_equal old.to_i, user.remember_created_at.to_i
+    end
+  end
+
+  test 'extends remember period when extend remember period config is true' do
+    swap Devise, extend_remember_period: true, remember_for: 1.year do
+      user = create_user_and_remember
+      old_remember_token = nil
+
+      travel_to 1.day.ago do
+        get root_path
+        old_remember_token = request.cookies['remember_user_token']
+      end
+
+      get root_path
+      current_remember_token = request.cookies['remember_user_token']
+
+      refute_equal old_remember_token, current_remember_token
+    end
+  end
+
+  test 'does not extend remember period when extend period config is false' do
+    swap Devise, extend_remember_period: false, remember_for: 1.year do
+      user = create_user_and_remember
+      old_remember_token = nil
+
+      travel_to 1.day.ago do
+        get root_path
+        old_remember_token = request.cookies['remember_user_token']
+      end
+
+      get root_path
+      current_remember_token = request.cookies['remember_user_token']
+
+      assert_equal old_remember_token, current_remember_token
     end
   end
 
@@ -135,7 +173,7 @@ class RememberMeTest < ActionDispatch::IntegrationTest
 
   test 'do not remember with expired token' do
     create_user_and_remember
-    swap Devise, :remember_for => 0 do
+    swap Devise, remember_for: 0.days do
       get users_path
       assert_not warden.authenticated?(:user)
       assert_redirected_to new_user_session_path
@@ -163,5 +201,14 @@ class RememberMeTest < ActionDispatch::IntegrationTest
 
     get users_path
     assert_not warden.authenticated?(:user)
+  end
+
+  test 'valid sign in calls after_remembered callback' do
+    user = create_user_and_remember
+
+    User.expects(:serialize_from_cookie).returns user
+    user.expects :after_remembered
+
+    get new_user_registration_path
   end
 end

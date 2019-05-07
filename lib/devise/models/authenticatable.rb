@@ -1,3 +1,4 @@
+require 'active_model/version'
 require 'devise/hooks/activatable'
 require 'devise/hooks/csrf_cleaner'
 
@@ -29,7 +30,7 @@ module Devise
     #     It also accepts an array specifying the strategies that should allow params authentication.
     #
     #   * +skip_session_storage+: By default Devise will store the user in session.
-    #     By default is set to :skip_session_storage => [:http_auth].
+    #     By default is set to skip_session_storage: [:http_auth].
     #
     # == active_for_authentication?
     #
@@ -37,7 +38,7 @@ module Devise
     # calling model.active_for_authentication?. This method is overwritten by other devise modules. For instance,
     # :confirmable overwrites .active_for_authentication? to only return true if your model was confirmed.
     #
-    # You overwrite this method yourself, but if you do, don't forget to call super:
+    # You can overwrite this method yourself, but if you do, don't forget to call super:
     #
     #   def active_for_authentication?
     #     super && special_condition_is_valid?
@@ -59,7 +60,7 @@ module Devise
         :remember_token, :unconfirmed_email, :failed_attempts, :unlock_token, :locked_at]
 
       included do
-        class_attribute :devise_modules, :instance_writer => false
+        class_attribute :devise_modules, instance_writer: false
         self.devise_modules ||= []
 
         before_validation :downcase_keys
@@ -95,29 +96,22 @@ module Devise
       def authenticatable_salt
       end
 
-      array = %w(serializable_hash)
-      # to_xml does not call serializable_hash on 3.1
-      array << "to_xml" if Rails::VERSION::STRING[0,3] == "3.1"
+      # Redefine serializable_hash in models for more secure defaults.
+      # By default, it removes from the serializable model all attributes that
+      # are *not* accessible. You can remove this default by using :force_except
+      # and passing a new list of attributes you want to exempt. All attributes
+      # given to :except will simply add names to exempt to Devise internal list.
+      def serializable_hash(options = nil)
+        options ||= {}
+        options[:except] = Array(options[:except])
 
-      array.each do |method|
-        class_eval <<-RUBY, __FILE__, __LINE__
-          # Redefine to_xml and serializable_hash in models for more secure defaults.
-          # By default, it removes from the serializable model all attributes that
-          # are *not* accessible. You can remove this default by using :force_except
-          # and passing a new list of attributes you want to exempt. All attributes
-          # given to :except will simply add names to exempt to Devise internal list.
-          def #{method}(options=nil)
-            options ||= {}
-            options[:except] = Array(options[:except])
+        if options[:force_except]
+          options[:except].concat Array(options[:force_except])
+        else
+          options[:except].concat BLACKLIST_FOR_SERIALIZATION
+        end
 
-            if options[:force_except]
-              options[:except].concat Array(options[:force_except])
-            else
-              options[:except].concat BLACKLIST_FOR_SERIALIZATION
-            end
-            super(options)
-          end
-        RUBY
+        super(options)
       end
 
       protected
@@ -127,7 +121,7 @@ module Devise
       end
 
       # This is an internal method called every time Devise needs
-      # to send a notification/mail. This can be overriden if you
+      # to send a notification/mail. This can be overridden if you
       # need to customize the e-mail delivery logic. For instance,
       # if you are using a queue to deliver e-mails (delayed job,
       # sidekiq, resque, etc), you must add the delivery to the queue
@@ -170,7 +164,13 @@ module Devise
       #     end
       #
       def send_devise_notification(notification, *args)
-        devise_mailer.send(notification, self, *args).deliver
+        message = devise_mailer.send(notification, self, *args)
+        # Remove once we move to Rails 4.2+ only.
+        if message.respond_to?(:deliver_now)
+          message.deliver_now
+        else
+          message.deliver
+        end
       end
 
       def downcase_keys
@@ -231,7 +231,7 @@ module Devise
         # Example:
         #
         #   def self.find_for_authentication(tainted_conditions)
-        #     find_first_by_auth_conditions(tainted_conditions, :active => true)
+        #     find_first_by_auth_conditions(tainted_conditions, active: true)
         #   end
         #
         # Finally, notice that Devise also queries for users in other scenarios
@@ -246,14 +246,14 @@ module Devise
           to_adapter.find_first(devise_parameter_filter.filter(tainted_conditions).merge(opts))
         end
 
-        # Find an initialize a record setting an error if it can't be found.
+        # Find or initialize a record setting an error if it can't be found.
         def find_or_initialize_with_error_by(attribute, value, error=:invalid) #:nodoc:
           find_or_initialize_with_errors([attribute], { attribute => value }, error)
         end
 
-        # Find an initialize a group of attributes based on a list of required attributes.
+        # Find or initialize a record with group of attributes based on a list of required attributes.
         def find_or_initialize_with_errors(required_attributes, attributes, error=:invalid) #:nodoc:
-          attributes = attributes.slice(*required_attributes)
+          attributes = attributes.slice(*required_attributes).with_indifferent_access
           attributes.delete_if { |key, value| value.blank? }
 
           if attributes.size == required_attributes.size

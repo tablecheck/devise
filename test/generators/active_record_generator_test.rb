@@ -30,12 +30,18 @@ if DEVISE_ORM == :active_record
       run_generator %w(monster)
       assert_migration "db/migrate/devise_create_monsters.rb"
       assert_migration "db/migrate/add_devise_to_monsters.rb"
-      run_generator %w(monster), :behavior => :revoke
+      run_generator %w(monster), behavior: :revoke
       assert_no_migration "db/migrate/add_devise_to_monsters.rb"
       assert_migration "db/migrate/devise_create_monsters.rb"
-      run_generator %w(monster), :behavior => :revoke
+      run_generator %w(monster), behavior: :revoke
       assert_no_file "app/models/monster.rb"
       assert_no_migration "db/migrate/devise_create_monsters.rb"
+    end
+
+    test "use string column type for ip addresses" do
+      run_generator %w(monster)
+      assert_migration "db/migrate/devise_create_monsters.rb", /t.string   :current_sign_in_ip/
+      assert_migration "db/migrate/devise_create_monsters.rb", /t.string   :last_sign_in_ip/
     end
   end
 
@@ -47,11 +53,11 @@ if DEVISE_ORM == :active_record
 
   def simulate_inside_engine(engine, namespace)
     if Rails::Generators.respond_to?(:namespace=)
-      swap Rails::Generators, :namespace => namespace do
+      swap Rails::Generators, namespace: namespace do
         yield
       end
     else
-      swap Rails, :application => engine.instance do
+      swap Rails, application: engine.instance do
         yield
       end
     end

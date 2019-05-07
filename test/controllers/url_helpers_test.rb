@@ -13,11 +13,17 @@ class RoutesTest < ActionController::TestCase
     assert_equal @controller.send(:"#{prepend_path}#{name}_url", :user),
                  send(:"#{prepend_path}user_#{name}_url")
 
+    # With string
+    assert_equal @controller.send(:"#{prepend_path}#{name}_path", "user"),
+                 send(:"#{prepend_path}user_#{name}_path")
+    assert_equal @controller.send(:"#{prepend_path}#{name}_url", "user"),
+                 send(:"#{prepend_path}user_#{name}_url")
+
     # Default url params
-    assert_equal @controller.send(:"#{prepend_path}#{name}_path", :user, :param => 123),
-                 send(:"#{prepend_path}user_#{name}_path", :param => 123)
-    assert_equal @controller.send(:"#{prepend_path}#{name}_url", :user, :param => 123),
-                 send(:"#{prepend_path}user_#{name}_url", :param => 123)
+    assert_equal @controller.send(:"#{prepend_path}#{name}_path", :user, param: 123),
+                 send(:"#{prepend_path}user_#{name}_path", param: 123)
+    assert_equal @controller.send(:"#{prepend_path}#{name}_url", :user, param: 123),
+                 send(:"#{prepend_path}user_#{name}_url", param: 123)
 
     @request.path = nil
     # With an object

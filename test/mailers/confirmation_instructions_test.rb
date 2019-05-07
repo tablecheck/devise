@@ -53,7 +53,7 @@ class ConfirmationInstructionsTest < ActionMailer::TestCase
 
   test 'custom mailer renders parent mailer template' do
     Devise.mailer = 'Users::Mailer'
-    assert_not_blank mail.body.encoded
+    assert_present mail.body.encoded
   end
 
   test 'setup reply to as copy from sender' do
@@ -67,13 +67,13 @@ class ConfirmationInstructionsTest < ActionMailer::TestCase
   end
 
   test 'setup subject from I18n' do
-    store_translations :en, :devise => { :mailer => { :confirmation_instructions => { :subject => 'Account Confirmation' } } } do
+    store_translations :en, devise: { mailer: { confirmation_instructions: { subject: 'Account Confirmation' } } } do
       assert_equal 'Account Confirmation', mail.subject
     end
   end
 
   test 'subject namespaced by model' do
-    store_translations :en, :devise => { :mailer => { :confirmation_instructions => { :user_subject => 'User Account Confirmation' } } } do
+    store_translations :en, devise: { mailer: { confirmation_instructions: { user_subject: 'User Account Confirmation' } } } do
       assert_equal 'User Account Confirmation', mail.subject
     end
   end
@@ -83,17 +83,17 @@ class ConfirmationInstructionsTest < ActionMailer::TestCase
   end
 
   test 'body should have link to confirm the account' do
-    host = ActionMailer::Base.default_url_options[:host]
+    host, port = ActionMailer::Base.default_url_options.values_at :host, :port
 
-    if mail.body.encoded =~ %r{<a href=\"http://#{host}/users/confirmation\?confirmation_token=([^"]+)">}
-      assert_equal Devise.token_generator.digest(user.class, :confirmation_token, $1), user.confirmation_token
+    if mail.body.encoded =~ %r{<a href=\"http://#{host}:#{port}/users/confirmation\?confirmation_token=([^"]+)">}
+      assert_equal $1, user.confirmation_token
     else
       flunk "expected confirmation url regex to match"
     end
   end
 
   test 'renders a scoped if scoped_views is set to true' do
-    swap Devise, :scoped_views => true do
+    swap Devise, scoped_views: true do
       assert_equal user.email, mail.body.decoded
     end
   end
@@ -108,7 +108,7 @@ class ConfirmationInstructionsTest < ActionMailer::TestCase
   end
 
   test 'mailer sender accepts a proc' do
-    swap Devise, :mailer_sender => proc { "another@example.com" } do
+    swap Devise, mailer_sender: proc { "another@example.com" } do
       assert_equal ['another@example.com'], mail.from
     end
   end

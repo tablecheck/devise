@@ -1,10 +1,11 @@
 # encoding: UTF-8
-require "bundler/gem_tasks"
+
+require 'bundler/gem_tasks'
 require 'rake/testtask'
 require 'rdoc/task'
 
 desc 'Default: run tests for all ORMs.'
-task :default => :test
+task default: :test
 
 desc 'Run Devise tests for all ORMs.'
 task :pre_commit do
