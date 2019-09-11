@@ -20,16 +20,6 @@ module Devise
   autoload :TokenGenerator,     'devise/token_generator'
   autoload :SecretKeyFinder,    'devise/secret_key_finder'
 
-  module Controllers
-    autoload :Generator,      'devise/controllers/generator'
-    autoload :Helpers,        'devise/controllers/helpers'
-    autoload :Rememberable,   'devise/controllers/rememberable'
-    autoload :ScopedViews,    'devise/controllers/scoped_views'
-    autoload :SignInOut,      'devise/controllers/sign_in_out'
-    autoload :StoreLocation,  'devise/controllers/store_location'
-    autoload :UrlHelpers,     'devise/controllers/url_helpers'
-  end
-
   module Hooks
     autoload :Proxy, 'devise/hooks/proxy'
   end

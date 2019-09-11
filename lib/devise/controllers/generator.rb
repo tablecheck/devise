@@ -67,7 +67,7 @@ module Devise
         def set_devise_router
           @parent.class_variable_set('@@devise_controller_scope', scope)
           @parent.class_eval do
-            before_filter ->{ Devise.router_name = self.class.class_variable_get('@@devise_controller_scope') }
+            before_action ->{ Devise.router_name = self.class.class_variable_get('@@devise_controller_scope') }
           end
         end
 
