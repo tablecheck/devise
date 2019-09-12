@@ -57,7 +57,7 @@ module Devise
         rescue StandardError
           Object.const_set(scope.to_s.classify, Module.new)
         end
-        
+
         def scoped_module
           (scope == :devise) ? root_module : "#{root_module}::Devise".constantize
         rescue StandardError

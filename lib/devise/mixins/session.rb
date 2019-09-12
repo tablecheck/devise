@@ -1,6 +1,6 @@
 module Devise
   module Mixins
-    module Registration
+    module Session
       extend ActiveSupport::Concern
 
       included do

@@ -20,6 +20,16 @@ module Devise
   autoload :TokenGenerator,     'devise/token_generator'
   autoload :SecretKeyFinder,    'devise/secret_key_finder'
 
+  module Controllers
+    autoload :Generator,     'devise/controllers/generator'
+    autoload :Helpers,       'devise/controllers/helpers'
+    autoload :Rememberable,  'devise/controllers/rememberable'
+    autoload :ScopedViews,   'devise/controllers/scoped_views'
+    autoload :SignInOut,     'devise/controllers/sign_in_out'
+    autoload :StoreLocation, 'devise/controllers/store_location'
+    autoload :UrlHelpers,    'devise/controllers/url_helpers'
+  end
+
   module Hooks
     autoload :Proxy, 'devise/hooks/proxy'
   end
@@ -29,13 +39,13 @@ module Devise
   end
 
   module Mixins
-    autoload :Base, 'devise/mixins/base'
-    autoload :Confirmation, 'devise/mixins/'
-    autoload :OmniauthCallback, 'devise/mixins/'
-    autoload :Password, 'devise/mixins/'
-    autoload :Registration, 'devise/mixins/'
-    autoload :Session, 'devise/mixins/'
-    autoload :Unlock, 'devise/mixins/'
+    autoload :Base,             'devise/mixins/base'
+    autoload :Confirmation,     'devise/mixins/confirmation'
+    autoload :OmniauthCallback, 'devise/mixins/omniauth_callback'
+    autoload :Password,         'devise/mixins/password'
+    autoload :Registration,     'devise/mixins/registration'
+    autoload :Session,          'devise/mixins/session'
+    autoload :Unlock,           'devise/mixins/unlock'
   end
 
   module Strategies
@@ -297,6 +307,7 @@ module Devise
   # If within the same application, Devise is to be mounted on different engines.
   mattr_accessor :controller_scopes
   @@controller_scopes = [:devise]
+
 
   # When set to false, changing a password does not automatically sign in a user
   mattr_accessor :sign_in_after_change_password
