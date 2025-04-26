@@ -21,6 +21,7 @@ module Devise
   autoload :TokenGenerator,     'devise/token_generator'
 
   module Controllers
+    autoload :Generator,      'devise/controllers/generator'
     autoload :Helpers,        'devise/controllers/helpers'
     autoload :Rememberable,   'devise/controllers/rememberable'
     autoload :Responder,      'devise/controllers/responder'
@@ -36,6 +37,16 @@ module Devise
 
   module Mailers
     autoload :Helpers, 'devise/mailers/helpers'
+  end
+
+  module Mixins
+    autoload :Base,             'devise/mixins/base'
+    autoload :Confirmation,     'devise/mixins/confirmation'
+    autoload :OmniauthCallback, 'devise/mixins/omniauth_callback'
+    autoload :Password,         'devise/mixins/password'
+    autoload :Registration,     'devise/mixins/registration'
+    autoload :Session,          'devise/mixins/session'
+    autoload :Unlock,           'devise/mixins/unlock'
   end
 
   module Strategies
@@ -308,6 +319,10 @@ module Devise
   # Stores the token generator
   mattr_accessor :token_generator
   @@token_generator = nil
+
+  # If within the same application, Devise is to be mounted on different engines.
+  mattr_accessor :controller_scopes
+  @@controller_scopes = [:devise]
 
   # When set to false, changing a password does not automatically sign in a user
   mattr_accessor :sign_in_after_change_password

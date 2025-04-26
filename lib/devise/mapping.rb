@@ -64,7 +64,7 @@ module Devise
       @sign_out_via = options[:sign_out_via] || Devise.sign_out_via
       @format = options[:format]
 
-      @router_name = options[:router_name]
+      @router_name = options[:router_name] || Devise.available_router_name
 
       default_failure_app(options)
       default_controllers(options)
