@@ -21,7 +21,7 @@ module Devise
       # to the set_user method in warden.
       # If you are using a custom warden strategy and the timeoutable module, you have to
       # set `env["devise.skip_timeout"] = true` in the request to use this method, like we do
-      # in the sessions controller: https://github.com/heartcombo/devise/blob/master/app/controllers/devise/sessions_controller.rb#L7
+      # in the sessions controller: https://github.com/heartcombo/devise/blob/main/app/controllers/devise/sessions_controller.rb#L7
       #
       # Examples:
       #
@@ -38,7 +38,7 @@ module Devise
         expire_data_after_sign_in!
 
         if options[:bypass]
-          ActiveSupport::Deprecation.warn(<<-DEPRECATION.strip_heredoc, caller)
+          Devise.deprecator.warn(<<-DEPRECATION.strip_heredoc, caller)
           [Devise] bypass option is deprecated and it will be removed in future version of Devise.
           Please use bypass_sign_in method instead.
           Example:
@@ -106,12 +106,6 @@ module Devise
       private
 
       def expire_data_after_sign_in!
-        # TODO: remove once Rails 5.2+ and forward are only supported.
-        # session.keys will return an empty array if the session is not yet loaded.
-        # This is a bug in both Rack and Rails.
-        # A call to #empty? forces the session to be loaded.
-        session.empty?
-
         session.keys.grep(/^devise\./).each { |k| session.delete(k) }
       end
 

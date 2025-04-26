@@ -48,7 +48,7 @@ module Devise
         end
 
         def auth_options
-          { scope: resource_name, recall: "#{controller_path}#new" }
+          { scope: resource_name, recall: "#{controller_path}#new", locale: I18n.locale }
         end
 
         def translation_scope
@@ -80,7 +80,7 @@ module Devise
           # support returning empty response on GET request
           respond_to do |format|
             format.all { head :no_content }
-            format.any(*navigational_formats) { redirect_to after_sign_out_path_for(resource_name) }
+            format.any(*navigational_formats) { redirect_to after_sign_out_path_for(resource_name), status: Devise.responder.redirect_status }
           end
         end
       end

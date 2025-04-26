@@ -12,13 +12,13 @@ class PasswordTest < Devise::IntegrationTest
   def request_forgot_password(&block)
     visit_new_password_path
     assert_response :success
-    refute warden.authenticated?(:user)
+    assert_not warden.authenticated?(:user)
 
     fill_in 'email', with: 'user@test.com'
     yield if block_given?
 
     Devise.stubs(:friendly_token).returns("abcdef")
-    click_button 'Send me reset password instructions'
+    click_button 'Send me password reset instructions'
   end
 
   def reset_password(options = {}, &block)
@@ -160,7 +160,7 @@ class PasswordTest < Devise::IntegrationTest
     assert_current_url '/users/password'
     assert_have_selector '#error_explanation'
     assert_contain %r{Reset password token(.*)invalid}
-    refute user.reload.valid_password?('987654321')
+    assert_not user.reload.valid_password?('987654321')
   end
 
   test 'not authenticated user with valid reset password token but invalid password should not be able to change their password' do
@@ -173,8 +173,8 @@ class PasswordTest < Devise::IntegrationTest
     assert_response :success
     assert_current_url '/users/password'
     assert_have_selector '#error_explanation'
-    assert_contain "Password confirmation doesn't match Password"
-    refute user.reload.valid_password?('987654321')
+    assert_contain %r{Password confirmation doesn['’]t match Password}
+    assert_not user.reload.valid_password?('987654321')
   end
 
   test 'not authenticated user with valid data should be able to change their password' do
@@ -194,7 +194,7 @@ class PasswordTest < Devise::IntegrationTest
     reset_password {  fill_in 'Confirm new password', with: 'other_password' }
     assert_response :success
     assert_have_selector '#error_explanation'
-    refute user.reload.valid_password?('987654321')
+    assert_not user.reload.valid_password?('987654321')
 
     reset_password visit: false
     assert_contain 'Your password has been changed successfully.'
@@ -218,7 +218,32 @@ class PasswordTest < Devise::IntegrationTest
       assert_contain 'Your password has been changed successfully.'
       assert_not_contain 'You are now signed in.'
       assert_equal new_user_session_path, @request.path
-      assert !warden.authenticated?(:user)
+      assert_not warden.authenticated?(:user)
+    end
+  end
+
+  test 'does not sign in user automatically after changing its password if resource_class.sign_in_after_reset_password is false' do
+    swap_model_config User, sign_in_after_reset_password: false do
+      create_user
+      request_forgot_password
+      reset_password
+
+      assert_contain 'Your password has been changed successfully'
+      assert_not_contain 'You are now signed in.'
+      assert_equal new_user_session_path, @request.path
+      assert_not warden.authenticated?(:user)
+    end
+  end
+
+  test 'sign in user automatically after changing its password if resource_class.sign_in_after_reset_password is true' do
+    swap Devise, sign_in_after_reset_password: false do
+      swap_model_config User, sign_in_after_reset_password: true do
+        create_user
+        request_forgot_password
+        reset_password
+
+        assert warden.authenticated?(:user)
+      end
     end
   end
 
@@ -232,7 +257,7 @@ class PasswordTest < Devise::IntegrationTest
         assert_contain 'Your password has been changed successfully.'
         assert_not_contain 'You are now signed in.'
         assert_equal new_user_session_path, @request.path
-        assert !warden.authenticated?(:user)
+        assert_not warden.authenticated?(:user)
       end
     end
   end
@@ -244,7 +269,7 @@ class PasswordTest < Devise::IntegrationTest
       reset_password
 
       assert_contain 'Your password has been changed successfully.'
-      assert !user.reload.access_locked?
+      assert_not user.reload.access_locked?
       assert warden.authenticated?(:user)
     end
   end
@@ -256,7 +281,7 @@ class PasswordTest < Devise::IntegrationTest
       reset_password
 
       assert_contain 'Your password has been changed successfully.'
-      assert !user.reload.access_locked?
+      assert_not user.reload.access_locked?
       assert warden.authenticated?(:user)
     end
   end
@@ -314,7 +339,7 @@ class PasswordTest < Devise::IntegrationTest
     swap Devise, paranoid: true do
       visit_new_password_path
       fill_in "email", with: "arandomemail@test.com"
-      click_button 'Send me reset password instructions'
+      click_button 'Send me password reset instructions'
 
       assert_not_contain "1 error prohibited this user from being saved:"
       assert_not_contain "Email not found"
@@ -328,7 +353,7 @@ class PasswordTest < Devise::IntegrationTest
       user = create_user
       visit_new_password_path
       fill_in 'email', with: user.email
-      click_button 'Send me reset password instructions'
+      click_button 'Send me password reset instructions'
 
       assert_contain "If your email address exists in our database, you will receive a password recovery link at your email address in a few minutes."
       assert_current_url "/users/sign_in"

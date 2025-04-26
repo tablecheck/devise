@@ -14,6 +14,8 @@ module Devise
     #   * +email_regexp+: the regular expression used to validate e-mails;
     #   * +password_length+: a range expressing password length. Defaults to 6..128.
     #
+    # Since +password_length+ is applied in a proc within `validates_length_of` it can be overridden
+    # at runtime.
     module Validatable
       # All validations used by this module.
       VALIDATIONS = [:validates_presence_of, :validates_uniqueness_of, :validates_format_of,
@@ -29,17 +31,12 @@ module Devise
 
         base.class_eval do
           validates_presence_of   :email, if: :email_required?
-          if Devise.activerecord51?
-            validates_uniqueness_of :email, allow_blank: true, case_sensitive: true, if: :will_save_change_to_email?
-            validates_format_of     :email, with: email_regexp, allow_blank: true, if: :will_save_change_to_email?
-          else
-            validates_uniqueness_of :email, allow_blank: true, if: :email_changed?
-            validates_format_of     :email, with: email_regexp, allow_blank: true, if: :email_changed?
-          end
+          validates_uniqueness_of :email, allow_blank: true, case_sensitive: true, if: :devise_will_save_change_to_email?
+          validates_format_of     :email, with: email_regexp, allow_blank: true, if: :devise_will_save_change_to_email?
 
           validates_presence_of     :password, if: :password_required?
           validates_confirmation_of :password, if: :password_required?
-          validates_length_of       :password, within: password_length, allow_blank: true
+          validates_length_of       :password, minimum: proc { password_length.min }, maximum: proc { password_length.max }, allow_blank: true
         end
       end
 
@@ -47,7 +44,7 @@ module Devise
         unavailable_validations = VALIDATIONS.select { |v| !base.respond_to?(v) }
 
         unless unavailable_validations.empty?
-          raise "Could not use :validatable module since #{base} does not respond " <<
+          raise "Could not use :validatable module since #{base} does not respond " \
                 "to the following methods: #{unavailable_validations.to_sentence}."
         end
       end

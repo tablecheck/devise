@@ -13,21 +13,22 @@ module Devise
   autoload :Encryptor,          'devise/encryptor'
   autoload :FailureApp,         'devise/failure_app'
   autoload :OmniAuth,           'devise/omniauth'
+  autoload :Orm,                'devise/orm'
   autoload :ParameterFilter,    'devise/parameter_filter'
   autoload :ParameterSanitizer, 'devise/parameter_sanitizer'
   autoload :TestHelpers,        'devise/test_helpers'
   autoload :TimeInflector,      'devise/time_inflector'
   autoload :TokenGenerator,     'devise/token_generator'
-  autoload :SecretKeyFinder,    'devise/secret_key_finder'
 
   module Controllers
-    autoload :Generator,     'devise/controllers/generator'
-    autoload :Helpers,       'devise/controllers/helpers'
-    autoload :Rememberable,  'devise/controllers/rememberable'
-    autoload :ScopedViews,   'devise/controllers/scoped_views'
-    autoload :SignInOut,     'devise/controllers/sign_in_out'
-    autoload :StoreLocation, 'devise/controllers/store_location'
-    autoload :UrlHelpers,    'devise/controllers/url_helpers'
+    autoload :Generator,      'devise/controllers/generator'
+    autoload :Helpers,        'devise/controllers/helpers'
+    autoload :Rememberable,   'devise/controllers/rememberable'
+    autoload :Responder,      'devise/controllers/responder'
+    autoload :ScopedViews,    'devise/controllers/scoped_views'
+    autoload :SignInOut,      'devise/controllers/sign_in_out'
+    autoload :StoreLocation,  'devise/controllers/store_location'
+    autoload :UrlHelpers,     'devise/controllers/url_helpers'
   end
 
   module Hooks
@@ -70,7 +71,7 @@ module Devise
   NO_INPUT = []
 
   # True values used to check params
-  TRUE_VALUES = [true, 1, '1', 't', 'T', 'true', 'TRUE']
+  TRUE_VALUES = [true, 1, '1', 'on', 'ON', 't', 'T', 'true', 'TRUE']
 
   # Secret key used by the key generator
   mattr_accessor :secret_key
@@ -228,7 +229,16 @@ module Devise
 
   # Which formats should be treated as navigational.
   mattr_accessor :navigational_formats
-  @@navigational_formats = ["*/*", :html]
+  @@navigational_formats = ["*/*", :html, :turbo_stream]
+
+  # The default responder used by Devise, used to customize status codes with:
+  #
+  #   `config.responder.error_status`
+  #   `config.responder.redirect_status`
+  #
+  # Can be replaced by a custom application responder.
+  mattr_accessor :responder
+  @@responder = Devise::Controllers::Responder
 
   # When set to true, signing out a user signs out all other scopes.
   mattr_accessor :sign_out_all_scopes
@@ -275,8 +285,14 @@ module Devise
   # PRIVATE CONFIGURATION
 
   # Store scopes mappings.
-  mattr_reader :mappings
   @@mappings = {}
+  def self.mappings
+    # Starting from Rails 8.0, routes are lazy-loaded by default in test and development environments.
+    # However, Devise's mappings are built during the routes loading phase.
+    # To ensure it works correctly, we need to load the routes first before accessing @@mappings.
+    Rails.application.try(:reload_routes_unless_loaded)
+    @@mappings
+  end
 
   # OmniAuth configurations.
   mattr_reader :omniauth_configs
@@ -308,14 +324,9 @@ module Devise
   mattr_accessor :controller_scopes
   @@controller_scopes = [:devise]
 
-
   # When set to false, changing a password does not automatically sign in a user
   mattr_accessor :sign_in_after_change_password
   @@sign_in_after_change_password = true
-
-  def self.activerecord51? # :nodoc:
-    defined?(ActiveRecord) && ActiveRecord.gem_version >= Gem::Version.new("5.1.x")
-  end
 
   # Default way to set up Devise. Run rails generate devise_install to create
   # a fresh initializer with all configuration values.
@@ -528,6 +539,18 @@ module Devise
     res = 0
     b.each_byte { |byte| res |= byte ^ l.shift }
     res == 0
+  end
+
+  def self.deprecator
+    @deprecator ||= ActiveSupport::Deprecation.new("5.0", "Devise")
+  end
+
+  def self.activerecord51? # :nodoc:
+    deprecator.warn <<-DEPRECATION.strip_heredoc
+      [Devise] `Devise.activerecord51?` is deprecated and will be removed in the next major version.
+      It is a non-public method that's no longer used internally, but that other libraries have been relying on.
+    DEPRECATION
+    defined?(ActiveRecord) && ActiveRecord.gem_version >= Gem::Version.new("5.1.x")
   end
 end
 

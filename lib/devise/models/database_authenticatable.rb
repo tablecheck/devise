@@ -84,16 +84,7 @@ module Devise
       # users to change relevant information like the e-mail without changing
       # their password). In case the password field is rejected, the confirmation
       # is also rejected as long as it is also blank.
-      def update_with_password(params, *options)
-        if options.present?
-          ActiveSupport::Deprecation.warn <<-DEPRECATION.strip_heredoc
-            [Devise] The second argument of `DatabaseAuthenticatable#update_with_password`
-            (`options`) is deprecated and it will be removed in the next major version.
-            It was added to support a feature deprecated in Rails 4, so you can safely remove it
-            from your code.
-          DEPRECATION
-        end
-
+      def update_with_password(params)
         current_password = params.delete(:current_password)
 
         if params[:password].blank?
@@ -102,9 +93,9 @@ module Devise
         end
 
         result = if valid_password?(current_password)
-          update(params, *options)
+          update(params)
         else
-          assign_attributes(params, *options)
+          assign_attributes(params)
           valid?
           errors.add(:current_password, current_password.blank? ? :blank : :invalid)
           false
@@ -121,25 +112,16 @@ module Devise
       #
       # Example:
       #
-      #   def update_without_password(params, *options)
+      #   def update_without_password(params)
       #     params.delete(:email)
       #     super(params)
       #   end
       #
-      def update_without_password(params, *options)
-        if options.present?
-          ActiveSupport::Deprecation.warn <<-DEPRECATION.strip_heredoc
-            [Devise] The second argument of `DatabaseAuthenticatable#update_without_password`
-            (`options`) is deprecated and it will be removed in the next major version.
-            It was added to support a feature deprecated in Rails 4, so you can safely remove it
-            from your code.
-          DEPRECATION
-        end
-
+      def update_without_password(params)
         params.delete(:password)
         params.delete(:password_confirmation)
 
-        result = update(params, *options)
+        result = update(params)
         clean_up_passwords
         result
       end
@@ -177,16 +159,9 @@ module Devise
         encrypted_password[0,29] if encrypted_password
       end
 
-      if Devise.activerecord51?
-        # Send notification to user when email changes.
-        def send_email_changed_notification
-          send_devise_notification(:email_changed, to: email_before_last_save)
-        end
-      else
-        # Send notification to user when email changes.
-        def send_email_changed_notification
-          send_devise_notification(:email_changed, to: email_was)
-        end
+      # Send notification to user when email changes.
+      def send_email_changed_notification
+        send_devise_notification(:email_changed, to: devise_email_before_last_save)
       end
 
       # Send notification to user when password changes.
@@ -205,24 +180,12 @@ module Devise
         Devise::Encryptor.digest(self.class, password)
       end
 
-      if Devise.activerecord51?
-        def send_email_changed_notification?
-          self.class.send_email_changed_notification && saved_change_to_email? && !@skip_email_changed_notification
-        end
-      else
-        def send_email_changed_notification?
-          self.class.send_email_changed_notification && email_changed? && !@skip_email_changed_notification
-        end
+      def send_email_changed_notification?
+        self.class.send_email_changed_notification && devise_saved_change_to_email? && !@skip_email_changed_notification
       end
 
-      if Devise.activerecord51?
-        def send_password_change_notification?
-          self.class.send_password_change_notification && saved_change_to_encrypted_password? && !@skip_password_change_notification
-        end
-      else
-        def send_password_change_notification?
-          self.class.send_password_change_notification && encrypted_password_changed? && !@skip_password_change_notification
-        end
+      def send_password_change_notification?
+        self.class.send_password_change_notification && devise_saved_change_to_encrypted_password? && !@skip_password_change_notification
       end
 
       module ClassMethods

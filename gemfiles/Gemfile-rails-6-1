@@ -7,11 +7,9 @@ gem "omniauth"
 gem "omniauth-oauth2"
 gem "rdoc"
 
-gem "activemodel-serializers-xml", github: "rails/activemodel-serializers-xml"
-
 gem "rails-controller-testing", github: "rails/rails-controller-testing"
 
-gem "responders", "~> 3.0"
+gem "responders", "~> 3.1"
 
 if RUBY_VERSION >= "3.1"
   gem "net-smtp", require: false
@@ -20,13 +18,12 @@ if RUBY_VERSION >= "3.1"
 end
 
 group :test do
-  gem "nokogiri", "< 1.13"
   gem "omniauth-facebook"
   gem "omniauth-openid"
   gem "rexml"
   gem "timecop"
   gem "webrat", "0.7.3", require: false
-  gem "mocha", "~> 1.1", require: false
+  gem "mocha", "~> 2.1", require: false
 end
 
 platforms :ruby do

@@ -30,29 +30,30 @@ module Devise
             set_flash_message!(:notice, :confirmed)
             respond_with_navigational(resource){ redirect_to after_confirmation_path_for(resource_name, resource) }
           else
+            # TODO: use `error_status` when the default changes to `:unprocessable_entity`.
             respond_with_navigational(resource.errors, status: :unprocessable_entity){ render :new }
           end
         end
 
         protected
 
-          # The path used after resending confirmation instructions.
-          def after_resending_confirmation_instructions_path_for(resource_name)
-            is_navigational_format? ? new_session_path(resource_name) : '/'
-          end
+        # The path used after resending confirmation instructions.
+        def after_resending_confirmation_instructions_path_for(resource_name)
+          is_navigational_format? ? new_session_path(resource_name) : '/'
+        end
 
-          # The path used after confirmation.
-          def after_confirmation_path_for(resource_name, resource)
-            if signed_in?(resource_name)
-              signed_in_root_path(resource)
-            else
-              new_session_path(resource_name)
-            end
+        # The path used after confirmation.
+        def after_confirmation_path_for(resource_name, resource)
+          if signed_in?(resource_name)
+            signed_in_root_path(resource)
+          else
+            new_session_path(resource_name)
           end
+        end
 
-          def translation_scope
-            'devise.confirmations'
-          end
+        def translation_scope
+          'devise.confirmations'
+        end
       end
     end
   end

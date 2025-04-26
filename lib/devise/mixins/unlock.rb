@@ -38,19 +38,19 @@ module Devise
 
         protected
 
-          # The path used after sending unlock password instructions
-          def after_sending_unlock_instructions_path_for(resource)
-            new_session_path(resource) if is_navigational_format?
-          end
+        # The path used after sending unlock password instructions
+        def after_sending_unlock_instructions_path_for(resource)
+          new_session_path(resource) if is_navigational_format?
+        end
 
-          # The path used after unlocking the resource
-          def after_unlock_path_for(resource)
-            new_session_path(resource)  if is_navigational_format?
-          end
+        # The path used after unlocking the resource
+        def after_unlock_path_for(resource)
+          new_session_path(resource)  if is_navigational_format?
+        end
 
-          def translation_scope
-            'devise.unlocks'
-          end
+        def translation_scope
+          'devise.unlocks'
+        end
       end
     end
   end

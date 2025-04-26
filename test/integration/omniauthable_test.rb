@@ -52,7 +52,7 @@ class OmniauthableIntegrationTest < Devise::IntegrationTest
       follow_redirect!
       assert warden.authenticated?(:user)
 
-      refute User.validations_performed
+      assert_not User.validations_performed
     end
   end
 
@@ -87,7 +87,7 @@ class OmniauthableIntegrationTest < Devise::IntegrationTest
     assert_current_url "/"
     assert_contain "You have signed up successfully."
     assert_contain "Hello User user@example.com"
-    refute session["devise.facebook_data"]
+    assert_not session["devise.facebook_data"]
   end
 
   test "cleans up session on cancel" do
@@ -98,7 +98,7 @@ class OmniauthableIntegrationTest < Devise::IntegrationTest
 
     assert session["devise.facebook_data"]
     visit "/users/cancel"
-    assert !session["devise.facebook_data"]
+    assert_not session["devise.facebook_data"]
   end
 
   test "cleans up session on sign in" do
@@ -109,7 +109,7 @@ class OmniauthableIntegrationTest < Devise::IntegrationTest
 
     assert session["devise.facebook_data"]
     sign_in_as_user
-    assert !session["devise.facebook_data"]
+    assert_not session["devise.facebook_data"]
   end
 
   test "sign in and send remember token if configured" do
@@ -126,15 +126,41 @@ class OmniauthableIntegrationTest < Devise::IntegrationTest
     end
   end
 
+  test "authorization path via GET when Omniauth allowed_request_methods includes GET" do
+    original_allowed = OmniAuth.config.allowed_request_methods
+    OmniAuth.config.allowed_request_methods = [:get, :post]
+
+    get "/users/auth/facebook"
+
+    assert_response(:redirect)
+  ensure
+    OmniAuth.config.allowed_request_methods = original_allowed
+  end
+
+  test "authorization path via GET when Omniauth allowed_request_methods doesn't include GET" do
+    original_allowed = OmniAuth.config.allowed_request_methods
+    OmniAuth.config.allowed_request_methods = [:post]
+
+    assert_raises(ActionController::RoutingError) do
+      get "/users/auth/facebook"
+    end
+  ensure
+    OmniAuth.config.allowed_request_methods = original_allowed
+  end
+
   test "generates a link to authenticate with provider" do
     visit "/users/sign_in"
-    assert_select "a[href=?][data-method='post']", "/users/auth/facebook", text: "Sign in with FaceBook"
+    assert_select "form[action=?][method=post]", "/users/auth/facebook" do
+      assert_select "input[type=submit][value=?]", "Sign in with FaceBook"
+    end
   end
 
   test "generates a proper link when SCRIPT_NAME is set" do
     header 'SCRIPT_NAME', '/q'
     visit "/users/sign_in"
-    assert_select "a[href=?][data-method='post']", "/q/users/auth/facebook", text: "Sign in with FaceBook"
+    assert_select "form[action=?][method=post]", "/q/users/auth/facebook" do
+      assert_select "input[type=submit][value=?]", "Sign in with FaceBook"
+    end
   end
 
   test "handles callback error parameter according to the specification" do

@@ -1,6 +1,4 @@
-![Devise Logo](https://raw.github.com/heartcombo/devise/master/devise.png)
-
-[![Code Climate](https://codeclimate.com/github/heartcombo/devise.svg)](https://codeclimate.com/github/heartcombo/devise)
+![Devise Logo](https://raw.github.com/heartcombo/devise/main/devise.png)
 
 Devise is a flexible authentication solution for Rails based on Warden. It:
 
@@ -11,16 +9,16 @@ Devise is a flexible authentication solution for Rails based on Warden. It:
 
 It's composed of 10 modules:
 
-* [Database Authenticatable](http://www.rubydoc.info/github/heartcombo/devise/master/Devise/Models/DatabaseAuthenticatable): hashes and stores a password in the database to validate the authenticity of a user while signing in. The authentication can be done both through POST requests or HTTP Basic Authentication.
-* [Omniauthable](http://www.rubydoc.info/github/heartcombo/devise/master/Devise/Models/Omniauthable): adds OmniAuth (https://github.com/omniauth/omniauth) support.
-* [Confirmable](http://www.rubydoc.info/github/heartcombo/devise/master/Devise/Models/Confirmable): sends emails with confirmation instructions and verifies whether an account is already confirmed during sign in.
-* [Recoverable](http://www.rubydoc.info/github/heartcombo/devise/master/Devise/Models/Recoverable): resets the user password and sends reset instructions.
-* [Registerable](http://www.rubydoc.info/github/heartcombo/devise/master/Devise/Models/Registerable): handles signing up users through a registration process, also allowing them to edit and destroy their account.
-* [Rememberable](http://www.rubydoc.info/github/heartcombo/devise/master/Devise/Models/Rememberable): manages generating and clearing a token for remembering the user from a saved cookie.
-* [Trackable](http://www.rubydoc.info/github/heartcombo/devise/master/Devise/Models/Trackable): tracks sign in count, timestamps and IP address.
-* [Timeoutable](http://www.rubydoc.info/github/heartcombo/devise/master/Devise/Models/Timeoutable): expires sessions that have not been active in a specified period of time.
-* [Validatable](http://www.rubydoc.info/github/heartcombo/devise/master/Devise/Models/Validatable): provides validations of email and password. It's optional and can be customized, so you're able to define your own validations.
-* [Lockable](http://www.rubydoc.info/github/heartcombo/devise/master/Devise/Models/Lockable): locks an account after a specified number of failed sign-in attempts. Can unlock via email or after a specified time period.
+* [Database Authenticatable](http://www.rubydoc.info/github/heartcombo/devise/main/Devise/Models/DatabaseAuthenticatable): hashes and stores a password in the database to validate the authenticity of a user while signing in. The authentication can be done both through POST requests or HTTP Basic Authentication.
+* [Omniauthable](http://www.rubydoc.info/github/heartcombo/devise/main/Devise/Models/Omniauthable): adds OmniAuth (https://github.com/omniauth/omniauth) support.
+* [Confirmable](http://www.rubydoc.info/github/heartcombo/devise/main/Devise/Models/Confirmable): sends emails with confirmation instructions and verifies whether an account is already confirmed during sign in.
+* [Recoverable](http://www.rubydoc.info/github/heartcombo/devise/main/Devise/Models/Recoverable): resets the user password and sends reset instructions.
+* [Registerable](http://www.rubydoc.info/github/heartcombo/devise/main/Devise/Models/Registerable): handles signing up users through a registration process, also allowing them to edit and destroy their account.
+* [Rememberable](http://www.rubydoc.info/github/heartcombo/devise/main/Devise/Models/Rememberable): manages generating and clearing a token for remembering the user from a saved cookie.
+* [Trackable](http://www.rubydoc.info/github/heartcombo/devise/main/Devise/Models/Trackable): tracks sign in count, timestamps and IP address.
+* [Timeoutable](http://www.rubydoc.info/github/heartcombo/devise/main/Devise/Models/Timeoutable): expires sessions that have not been active in a specified period of time.
+* [Validatable](http://www.rubydoc.info/github/heartcombo/devise/main/Devise/Models/Validatable): provides validations of email and password. It's optional and can be customized, so you're able to define your own validations.
+* [Lockable](http://www.rubydoc.info/github/heartcombo/devise/main/Devise/Models/Lockable): locks an account after a specified number of failed sign-in attempts. Can unlock via email or after a specified time period.
 
 ## Table of Contents
 
@@ -48,7 +46,7 @@ It's composed of 10 modules:
 	- [Integration tests](#integration-tests)
 	- [OmniAuth](#omniauth)
 	- [Configuring multiple models](#configuring-multiple-models)
-	- [ActiveJob Integration](#activejob-integration)
+	- [Active Job Integration](#active-job-integration)
 	- [Password reset tokens and Rails logs](#password-reset-tokens-and-rails-logs)
 	- [Other ORMs](#other-orms)
 	- [Rails API mode](#rails-api-mode)
@@ -91,7 +89,7 @@ https://groups.google.com/group/plataformatec-devise
 
 You can view the Devise documentation in RDoc format here:
 
-http://rubydoc.info/github/heartcombo/devise/master/frames
+http://rubydoc.info/github/heartcombo/devise/main/frames
 
 If you need to use Devise with previous versions of Rails, you can always run "gem server" from the command line after you install the gem to access the old documentation.
 
@@ -130,18 +128,18 @@ Please note that the command output will show the variable value being used.
 
 ### BUNDLE_GEMFILE
 We can use this variable to tell bundler what Gemfile it should use (instead of the one in the current directory).
-Inside the [gemfiles](https://github.com/heartcombo/devise/tree/master/gemfiles) directory, we have one for each version of Rails we support. When you send us a pull request, it may happen that the test suite breaks using some of them. If that's the case, you can simulate the same environment using the `BUNDLE_GEMFILE` variable.
-For example, if the tests broke using Ruby 2.4.2 and Rails 4.1, you can do the following:
+Inside the [gemfiles](https://github.com/heartcombo/devise/tree/main/gemfiles) directory, we have one for each version of Rails we support. When you send us a pull request, it may happen that the test suite breaks using some of them. If that's the case, you can simulate the same environment using the `BUNDLE_GEMFILE` variable.
+For example, if the tests broke using Ruby 3.0.0 and Rails 6.0, you can do the following:
 ```bash
-rbenv shell 2.4.2 # or rvm use 2.4.2
-BUNDLE_GEMFILE=gemfiles/Gemfile.rails-4.1-stable bundle install
-BUNDLE_GEMFILE=gemfiles/Gemfile.rails-4.1-stable bin/test
+rbenv shell 3.0.0 # or rvm use 3.0.0
+BUNDLE_GEMFILE=gemfiles/Gemfile-rails-6-0 bundle install
+BUNDLE_GEMFILE=gemfiles/Gemfile-rails-6-0 bin/test
 ```
 
 You can also combine both of them if the tests broke for Mongoid:
 ```bash
-BUNDLE_GEMFILE=gemfiles/Gemfile.rails-4.1-stable bundle install
-BUNDLE_GEMFILE=gemfiles/Gemfile.rails-4.1-stable DEVISE_ORM=mongoid bin/test
+BUNDLE_GEMFILE=gemfiles/Gemfile-rails-6-0 bundle install
+BUNDLE_GEMFILE=gemfiles/Gemfile-rails-6-0 DEVISE_ORM=mongoid bin/test
 ```
 
 ### Running tests
@@ -174,18 +172,16 @@ Once you have solidified your understanding of Rails and authentication mechanis
 
 ## Getting started
 
-Devise 4.0 works with Rails 4.1 onwards. Add the following line to your Gemfile:
+Devise 4.0 works with Rails 6.0 onwards. Run:
 
-```ruby
-gem 'devise'
+```sh
+bundle add devise
 ```
-
-Then run `bundle install`
 
 Next, you need to run the generator:
 
 ```console
-$ rails generate devise:install
+rails generate devise:install
 ```
 
 At this point, a number of instructions will appear in the console. Among these instructions, you'll need to set up the default URL options for the Devise mailer in each environment. Here is a possible configuration for `config/environments/development.rb`:
@@ -200,7 +196,7 @@ The generator will install an initializer which describes ALL of Devise's config
 In the following command you will replace `MODEL` with the class name used for the application’s users (it’s frequently `User` but could also be `Admin`). This will create a model (if one does not exist) and configure it with the default Devise modules. The generator also configures your `config/routes.rb` file to point to the Devise controller.
 
 ```console
-$ rails generate devise MODEL
+rails generate devise MODEL
 ```
 
 Next, check the MODEL for any additional configuration options you might want to add, such as confirmable or lockable. If you add an option, be sure to inspect the migration file (created by the generator if your ORM supports them) and uncomment the appropriate section.  For example, if you add the confirmable option in the model, you'll need to uncomment the Confirmable section in the migration.
@@ -372,7 +368,7 @@ We built Devise to help you quickly develop an application that uses authenticat
 Since Devise is an engine, all its views are packaged inside the gem. These views will help you get started, but after some time you may want to change them. If this is the case, you just need to invoke the following generator, and it will copy all views to your application:
 
 ```console
-$ rails generate devise:views
+rails generate devise:views
 ```
 
 If you have more than one Devise model in your application (such as `User` and `Admin`), you will notice that Devise uses the same views for all models. Fortunately, Devise offers an easy way to customize views. All you need to do is set `config.scoped_views = true` inside the `config/initializers/devise.rb` file.
@@ -380,14 +376,14 @@ If you have more than one Devise model in your application (such as `User` and `
 After doing so, you will be able to have views based on the role like `users/sessions/new` and `admins/sessions/new`. If no view is found within the scope, Devise will use the default view at `devise/sessions/new`. You can also use the generator to generate scoped views:
 
 ```console
-$ rails generate devise:views users
+rails generate devise:views users
 ```
 
 If you would like to generate only a few sets of views, like the ones for the `registerable` and `confirmable` module,
-you can pass a list of modules to the generator with the `-v` flag.
+you can pass a list of views to the generator with the `-v` flag.
 
 ```console
-$ rails generate devise:views -v registrations confirmations
+rails generate devise:views -v registrations confirmations
 ```
 
 ### Configuring controllers
@@ -397,7 +393,7 @@ If the customization at the views level is not enough, you can customize each co
 1. Create your custom controllers using the generator which requires a scope:
 
     ```console
-    $ rails generate devise:controllers [scope]
+    rails generate devise:controllers [scope]
     ```
 
     If you specify `users` as the scope, controllers will be created in `app/controllers/users/`.
@@ -412,7 +408,7 @@ If the customization at the views level is not enough, you can customize each co
       ...
     end
     ```
-    (Use the -c flag to specify a controller, for example: `rails generate devise:controllers users -c=sessions`)
+    Use the `-c` flag to specify one or more controllers, for example: `rails generate devise:controllers users -c sessions`
 
 2. Tell the router to use this controller:
 
@@ -420,7 +416,7 @@ If the customization at the views level is not enough, you can customize each co
     devise_for :users, controllers: { sessions: 'users/sessions' }
     ```
 
-3. Copy the views from `devise/sessions` to `users/sessions`. Since the controller was changed, it won't use the default views located in `devise/sessions`.
+3. Recommended but not required: copy (or move) the views from `devise/sessions` to `users/sessions`. Rails will continue using the views from `devise/sessions` due to inheritance if you skip this step, but having the views matching the controller(s) keeps things consistent.
 
 4. Finally, change or extend the desired controller actions.
 
@@ -458,7 +454,7 @@ Devise also ships with default routes. If you need to customize them, you should
 devise_for :users, path: 'auth', path_names: { sign_in: 'login', sign_out: 'logout', password: 'secret', confirmation: 'verification', unlock: 'unblock', registration: 'register', sign_up: 'cmon_let_me_in' }
 ```
 
-Be sure to check `devise_for` [documentation](http://www.rubydoc.info/github/heartcombo/devise/master/ActionDispatch/Routing/Mapper%3Adevise_for) for details.
+Be sure to check `devise_for` [documentation](http://www.rubydoc.info/github/heartcombo/devise/main/ActionDispatch/Routing/Mapper%3Adevise_for) for details.
 
 If you have the need for more deep customization, for instance to also allow "/sign_in" besides "/users/sign_in", all you need to do is create your routes normally and wrap them in a `devise_scope` block in the router:
 
@@ -475,6 +471,36 @@ Please note: You will still need to add `devise_for` in your routes in order to 
 ```ruby
 devise_for :users, skip: :all
 ```
+
+### Hotwire/Turbo
+
+Devise integrates with Hotwire/Turbo by treating such requests as navigational, and configuring certain responses for errors and redirects to match the expected behavior. New apps are generated with the following response configuration by default, and existing apps may opt-in by adding the config to their Devise initializers:
+
+```ruby
+Devise.setup do |config|
+  # ...
+  # When using Devise with Hotwire/Turbo, the http status for error responses
+  # and some redirects must match the following. The default in Devise for existing
+  # apps is `200 OK` and `302 Found` respectively, but new apps are generated with
+  # these new defaults that match Hotwire/Turbo behavior.
+  # Note: These might become the new default in future versions of Devise.
+  config.responder.error_status = :unprocessable_entity
+  config.responder.redirect_status = :see_other
+end
+```
+
+**Important**: these custom responses require the `responders` gem version to be `3.1.0` or higher, please make sure you update it if you're going to use this configuration. Check [this upgrade guide](https://github.com/heartcombo/devise/wiki/How-To:-Upgrade-to-Devise-4.9.0-[Hotwire-Turbo-integration]) for more info.
+
+_Note_: the above statuses configuration may become the default for Devise in a future release.
+
+There are a couple other changes you might need to make in your app to work with Hotwire/Turbo, if you're migrating from rails-ujs:
+
+* The `data-confirm` option that adds a confirmation modal to buttons/forms before submission needs to change to `data-turbo-confirm`, so that Turbo handles those appropriately.
+* The `data-method` option that sets the request method for link submissions needs to change to `data-turbo-method`. This is not necessary for `button_to` or `form`s since Turbo can handle those.
+
+If you're setting up Devise to sign out via `:delete`, and you're using links (instead of buttons wrapped in a form) to sign out with the `method: :delete` option, they will need to be updated as described above. (Devise does not provide sign out links/buttons in its shared views.)
+
+Make sure to inspect your views looking for those, and change appropriately.
 
 ### I18n
 
@@ -618,7 +644,7 @@ Unlike controller tests, integration tests do not need to supply the
 `devise.mapping` `env` value, as the mapping can be inferred by the routes that
 are executed in your tests.
 
-You can read more about testing your Rails 3 - Rails 4 controllers with RSpec in the wiki:
+You can read more about testing your Rails controllers with RSpec in the wiki:
 
 * https://github.com/heartcombo/devise/wiki/How-To:-Test-controllers-with-Rails-(and-RSpec)
 
@@ -665,9 +691,9 @@ Alternatively, you can simply run the Devise generator.
 
 Keep in mind that those models will have completely different routes. They **do not** and **cannot** share the same controller for sign in, sign out and so on. In case you want to have different roles sharing the same actions, we recommend that you use a role-based approach, by either providing a role column or using a dedicated gem for authorization.
 
-### ActiveJob Integration
+### Active Job Integration
 
-If you are using Rails 4.2 and ActiveJob to deliver ActionMailer messages in the
+If you are using Active Job to deliver Action Mailer messages in the
 background through a queuing back-end, you can send Devise emails through your
 existing queue by overriding the `send_devise_notification` method in your model.
 
@@ -679,7 +705,7 @@ end
 
 ### Password reset tokens and Rails logs
 
-If you enable the [Recoverable](http://rubydoc.info/github/heartcombo/devise/master/Devise/Models/Recoverable) module, note that a stolen password reset token could give an attacker access to your application. Devise takes effort to generate random, secure tokens, and stores only token digests in the database, never plaintext. However the default logging behavior in Rails can cause plaintext tokens to leak into log files:
+If you enable the [Recoverable](http://rubydoc.info/github/heartcombo/devise/main/Devise/Models/Recoverable) module, note that a stolen password reset token could give an attacker access to your application. Devise takes effort to generate random, secure tokens, and stores only token digests in the database, never plaintext. However the default logging behavior in Rails can cause plaintext tokens to leak into log files:
 
 1. Action Mailer logs the entire contents of all outgoing emails to the DEBUG level. Password reset tokens delivered to users in email will be leaked.
 2. Active Job logs all arguments to every enqueued job at the INFO level. If you configure Devise to use `deliver_later` to send password reset emails, password reset tokens will be leaked.
@@ -739,6 +765,6 @@ https://github.com/heartcombo/devise/graphs/contributors
 
 ## License
 
-MIT License. Copyright 2020 Rafael França, Leonardo Tegon, Carlos Antônio da Silva. Copyright 2009-2019 Plataformatec.
+MIT License. Copyright 2020-2024 Rafael França, Leonardo Tegon, Carlos Antônio da Silva. Copyright 2009-2019 Plataformatec.
 
 The Devise logo is licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License](https://creativecommons.org/licenses/by-nc-nd/4.0/).
