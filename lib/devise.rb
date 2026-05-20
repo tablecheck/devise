@@ -13,16 +13,17 @@ module Devise
   autoload :Encryptor,          'devise/encryptor'
   autoload :FailureApp,         'devise/failure_app'
   autoload :OmniAuth,           'devise/omniauth'
+  autoload :Orm,                'devise/orm'
   autoload :ParameterFilter,    'devise/parameter_filter'
   autoload :ParameterSanitizer, 'devise/parameter_sanitizer'
-  autoload :TestHelpers,        'devise/test_helpers'
   autoload :TimeInflector,      'devise/time_inflector'
   autoload :TokenGenerator,     'devise/token_generator'
-  autoload :SecretKeyFinder,    'devise/secret_key_finder'
 
   module Controllers
+    autoload :Generator,      'devise/controllers/generator'
     autoload :Helpers,        'devise/controllers/helpers'
     autoload :Rememberable,   'devise/controllers/rememberable'
+    autoload :Responder,      'devise/controllers/responder'
     autoload :ScopedViews,    'devise/controllers/scoped_views'
     autoload :SignInOut,      'devise/controllers/sign_in_out'
     autoload :StoreLocation,  'devise/controllers/store_location'
@@ -35,6 +36,16 @@ module Devise
 
   module Mailers
     autoload :Helpers, 'devise/mailers/helpers'
+  end
+
+  module Mixins
+    autoload :Base,             'devise/mixins/base'
+    autoload :Confirmation,     'devise/mixins/confirmation'
+    autoload :OmniauthCallback, 'devise/mixins/omniauth_callback'
+    autoload :Password,         'devise/mixins/password'
+    autoload :Registration,     'devise/mixins/registration'
+    autoload :Session,          'devise/mixins/session'
+    autoload :Unlock,           'devise/mixins/unlock'
   end
 
   module Strategies
@@ -59,7 +70,7 @@ module Devise
   NO_INPUT = []
 
   # True values used to check params
-  TRUE_VALUES = [true, 1, '1', 't', 'T', 'true', 'TRUE']
+  TRUE_VALUES = [true, 1, '1', 'on', 'ON', 't', 'T', 'true', 'TRUE']
 
   # Secret key used by the key generator
   mattr_accessor :secret_key
@@ -71,7 +82,7 @@ module Devise
 
   # The number of times to hash the password.
   mattr_accessor :stretches
-  @@stretches = 11
+  @@stretches = 12
 
   # The default key used when authenticating over http auth.
   mattr_accessor :http_authentication_key
@@ -217,7 +228,16 @@ module Devise
 
   # Which formats should be treated as navigational.
   mattr_accessor :navigational_formats
-  @@navigational_formats = ["*/*", :html]
+  @@navigational_formats = ["*/*", :html, :turbo_stream]
+
+  # The default responder used by Devise, used to customize status codes with:
+  #
+  #   `config.responder.error_status`
+  #   `config.responder.redirect_status`
+  #
+  # Can be replaced by a custom application responder.
+  mattr_accessor :responder
+  @@responder = Devise::Controllers::Responder
 
   # When set to true, signing out a user signs out all other scopes.
   mattr_accessor :sign_out_all_scopes
@@ -264,8 +284,14 @@ module Devise
   # PRIVATE CONFIGURATION
 
   # Store scopes mappings.
-  mattr_reader :mappings
   @@mappings = {}
+  def self.mappings
+    # Starting from Rails 8.0, routes are lazy-loaded by default in test and development environments.
+    # However, Devise's mappings are built during the routes loading phase.
+    # To ensure it works correctly, we need to load the routes first before accessing @@mappings.
+    Rails.application.try(:reload_routes_unless_loaded)
+    @@mappings
+  end
 
   # OmniAuth configurations.
   mattr_reader :omniauth_configs
@@ -293,17 +319,16 @@ module Devise
   mattr_accessor :token_generator
   @@token_generator = nil
 
+  # If within the same application, Devise is to be mounted on different engines.
+  # Each scope listed here will get a generated `<Scope>::Devise::*Controller`
+  # set inheriting from `<Scope>::ApplicationController`, allowing per-engine
+  # helpers/callbacks/concerns to be available to Devise actions.
+  mattr_accessor :controller_scopes
+  @@controller_scopes = [:devise]
+
   # When set to false, changing a password does not automatically sign in a user
   mattr_accessor :sign_in_after_change_password
   @@sign_in_after_change_password = true
-
-  def self.rails51? # :nodoc:
-    Rails.gem_version >= Gem::Version.new("5.1.x")
-  end
-
-  def self.activerecord51? # :nodoc:
-    defined?(ActiveRecord) && ActiveRecord.gem_version >= Gem::Version.new("5.1.x")
-  end
 
   # Default way to set up Devise. Run rails generate devise_install to create
   # a fresh initializer with all configuration values.
@@ -317,12 +342,20 @@ module Devise
     end
 
     def get
-      ActiveSupport::Dependencies.constantize(@name)
+      # TODO: Remove AS::Dependencies usage when dropping support to Rails < 7.
+      if ActiveSupport::Dependencies.respond_to?(:constantize)
+        ActiveSupport::Dependencies.constantize(@name)
+      else
+        @name.constantize
+      end
     end
   end
 
   def self.ref(arg)
-    ActiveSupport::Dependencies.reference(arg)
+    # TODO: Remove AS::Dependencies usage when dropping support to Rails < 7.
+    if ActiveSupport::Dependencies.respond_to?(:reference)
+      ActiveSupport::Dependencies.reference(arg)
+    end
     Getter.new(arg)
   end
 
@@ -430,9 +463,9 @@ module Devise
   #  Devise.setup do |config|
   #    config.allow_unconfirmed_access_for = 2.days
   #
-  #    config.warden do |manager|
+  #    config.warden do |warden_config|
   #      # Configure warden to use other strategies, like oauth.
-  #      manager.oauth(:twitter)
+  #      warden_config.oauth(:twitter)
   #    end
   #  end
   def self.warden(&block)
@@ -502,12 +535,12 @@ module Devise
 
   # constant-time comparison algorithm to prevent timing attacks
   def self.secure_compare(a, b)
-    return false if a.blank? || b.blank? || a.bytesize != b.bytesize
-    l = a.unpack "C#{a.bytesize}"
+    return false if a.nil? || b.nil?
+    ActiveSupport::SecurityUtils.secure_compare(a, b)
+  end
 
-    res = 0
-    b.each_byte { |byte| res |= byte ^ l.shift }
-    res == 0
+  def self.deprecator
+    @deprecator ||= ActiveSupport::Deprecation.new("5.0", "Devise")
   end
 end
 

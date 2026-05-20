@@ -4,37 +4,30 @@ source "https://rubygems.org"
 
 gemspec
 
-gem "rails", "~> 5.2"
-gem "omniauth", "~> 1.3"
-gem "oauth2"
+gem "omniauth"
 gem "omniauth-oauth2"
+gem "rails", "~> 8.1.0"
 gem "rdoc"
-
-gem "activemodel-serializers-xml", github: "rails/activemodel-serializers-xml"
 
 gem "rails-controller-testing"
 
-gem "responders", "~> 2.4"
+gem "responders", "~> 3.1"
 
 group :test do
+  gem "minitest", "< 6"
+  gem "mocha", "~> 2.1", require: false
   gem "omniauth-facebook"
   gem "omniauth-openid"
+  gem "rexml"
   gem "timecop"
-  gem "webrat", "0.7.3", require: false
-  gem "mocha", "~> 1.1", require: false
-end
-
-platforms :jruby do
-  gem "activerecord-jdbc-adapter"
-  gem "activerecord-jdbcsqlite3-adapter"
-  gem "jruby-openssl"
+  gem "webrat"
+  gem "ostruct"
 end
 
 platforms :ruby do
-  gem "sqlite3", "~> 1.3.6"
+  gem "sqlite3"
 end
 
-# TODO:
-# group :mongoid do
-#   gem "mongoid", "~> 4.0.0"
-# end
+group :mongoid do
+  gem "mongoid", "~> 9.0", github: "mongodb/mongoid", branch: "9.0-stable"
+end

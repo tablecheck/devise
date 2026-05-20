@@ -135,10 +135,10 @@ module ActionDispatch::Routing
     #  * failure_app: a rack app which is invoked whenever there is a failure. Strings representing a given
     #    are also allowed as parameter.
     #
-    #  * sign_out_via: the HTTP method(s) accepted for the :sign_out action (default: :get),
+    #  * sign_out_via: the HTTP method(s) accepted for the :sign_out action (default: :delete),
     #    if you wish to restrict this to accept only :post or :delete requests you should do:
     #
-    #      devise_for :users, sign_out_via: [:post, :delete]
+    #      devise_for :users, sign_out_via: [:get, :post]
     #
     #    You need to make sure that your sign_out controls trigger a request with a matching HTTP method.
     #
@@ -235,7 +235,6 @@ module ActionDispatch::Routing
       options[:constraints]   = (@scope[:constraints] || {}).merge(options[:constraints] || {})
       options[:defaults]      = (@scope[:defaults] || {}).merge(options[:defaults] || {})
       options[:options]       = @scope[:options] || {}
-      options[:options][:format] = false if options[:format] == false
 
       resources.map!(&:to_sym)
 
@@ -287,7 +286,7 @@ module ActionDispatch::Routing
     #     root to: "admin/dashboard#show", as: :user_root
     #   end
     #
-    def authenticate(scope=nil, block=nil)
+    def authenticate(scope = nil, block = nil)
       constraints_for(:authenticate!, scope, block) do
         yield
       end
@@ -311,7 +310,7 @@ module ActionDispatch::Routing
     #
     #   root to: 'landing#show'
     #
-    def authenticated(scope=nil, block=nil)
+    def authenticated(scope = nil, block = nil)
       constraints_for(:authenticate?, scope, block) do
         yield
       end
@@ -328,7 +327,7 @@ module ActionDispatch::Routing
     #
     #   root to: 'dashboard#show'
     #
-    def unauthenticated(scope=nil)
+    def unauthenticated(scope = nil)
       constraint = lambda do |request|
         not request.env["warden"].authenticate? scope: scope
       end
@@ -413,7 +412,7 @@ module ActionDispatch::Routing
           controller: controllers[:registrations]
         }
 
-        resource :registration, options do
+        resource :registration, **options do
           get :cancel
         end
       end
@@ -447,7 +446,7 @@ ERROR
           match "#{path_prefix}/#{provider}",
             to: "#{controllers[:omniauth_callbacks]}#passthru",
             as: "#{provider}_omniauth_authorize",
-            via: [:get, :post]
+            via: OmniAuth.config.allowed_request_methods
 
           match "#{path_prefix}/#{provider}/callback",
             to: "#{controllers[:omniauth_callbacks]}##{provider}",
@@ -462,7 +461,7 @@ ERROR
         current_scope = @scope.dup
 
         exclusive = { as: new_as, path: new_path, module: nil }
-        exclusive.merge!(options.slice(:constraints, :defaults, :options))
+        exclusive.merge!(options.slice(:constraints, :format, :defaults, :options))
 
         if @scope.respond_to? :new
           @scope = @scope.new exclusive
@@ -474,7 +473,7 @@ ERROR
         @scope = current_scope
       end
 
-      def constraints_for(method_to_apply, scope=nil, block=nil)
+      def constraints_for(method_to_apply, scope = nil, block = nil)
         constraint = lambda do |request|
           request.env['warden'].send(method_to_apply, scope: scope) &&
             (block.nil? || block.call(request.env["warden"].user(scope)))

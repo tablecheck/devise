@@ -21,7 +21,7 @@ class DatabaseAuthenticationTest < Devise::IntegrationTest
         fill_in 'email', with: 'foo@bar.com'
       end
 
-      refute warden.authenticated?(:user)
+      assert_not warden.authenticated?(:user)
     end
   end
 
@@ -43,14 +43,14 @@ class DatabaseAuthenticationTest < Devise::IntegrationTest
         fill_in 'email', with: ' foo@bar.com '
       end
 
-      refute warden.authenticated?(:user)
+      assert_not warden.authenticated?(:user)
     end
   end
 
   test 'sign in should not authenticate if not using proper authentication keys' do
     swap Devise, authentication_keys: [:username] do
       sign_in_as_user
-      refute warden.authenticated?(:user)
+      assert_not warden.authenticated?(:user)
     end
   end
 
@@ -61,17 +61,17 @@ class DatabaseAuthenticationTest < Devise::IntegrationTest
       end
 
       assert_contain 'Invalid email address'
-      refute warden.authenticated?(:admin)
+      assert_not warden.authenticated?(:admin)
     end
   end
 
-  test 'sign in with invalid pasword should return to sign in form with error message' do
+  test 'sign in with invalid password should return to sign in form with error message' do
     sign_in_as_admin do
       fill_in 'password', with: 'abcdef'
     end
 
-    assert_contain 'Invalid Email or password'
-    refute warden.authenticated?(:admin)
+    assert_contain 'Invalid email or password'
+    assert_not warden.authenticated?(:admin)
   end
 
   test 'when in paranoid mode and without a valid e-mail' do
@@ -80,9 +80,9 @@ class DatabaseAuthenticationTest < Devise::IntegrationTest
         sign_in_as_user do
           fill_in 'email', with: 'wrongemail@test.com'
         end
-        
+
         assert_not_contain 'Not found in database'
-        assert_contain 'Invalid Email or password.'
+        assert_contain 'Invalid email or password.'
       end
     end
   end

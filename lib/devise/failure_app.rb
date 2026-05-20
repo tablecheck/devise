@@ -18,6 +18,11 @@ module Devise
 
     delegate :flash, to: :request
 
+    include AbstractController::Callbacks
+    around_action do |failure_app, action|
+      I18n.with_locale(failure_app.i18n_locale, &action)
+    end
+
     def self.call(env)
       @respond ||= action(:respond)
       @respond.call(env)
@@ -71,8 +76,11 @@ module Devise
       end
 
       flash.now[:alert] = i18n_message(:invalid) if is_flashing_format?
-      # self.response = recall_app(warden_options[:recall]).call(env)
-      self.response = recall_app(warden_options[:recall]).call(request.env)
+      self.response = recall_app(warden_options[:recall]).call(request.env).tap { |response|
+        status = response[0].in?(300..399) ? Devise.responder.redirect_status : Devise.responder.error_status
+        # Avoid warnings translating status to code using Rails if available (e.g. `unprocessable_entity` => `unprocessable_content`)
+        response[0] = ActionDispatch::Response.try(:rack_status_code, status) || Rack::Utils.status_code(status)
+      }
     end
 
     def redirect
@@ -103,14 +111,25 @@ module Devise
         options[:scope] = "devise.failure"
         options[:default] = [message]
         auth_keys = scope_class.authentication_keys
-        keys = (auth_keys.respond_to?(:keys) ? auth_keys.keys : auth_keys).map { |key| scope_class.human_attribute_name(key) }
-        options[:authentication_keys] = keys.join(I18n.translate(:"support.array.words_connector"))
+        human_keys = (auth_keys.respond_to?(:keys) ? auth_keys.keys : auth_keys).map { |key|
+          # TODO: Remove the fallback and just use `downcase_first` once we drop support for Rails 7.0.
+          human_key = scope_class.human_attribute_name(key)
+          human_key.respond_to?(:downcase_first) ? human_key.downcase_first : human_key[0].downcase + human_key[1..]
+        }
+        options[:authentication_keys] = human_keys.join(I18n.t(:"support.array.words_connector"))
         options = i18n_options(options)
 
-        I18n.t(:"#{scope}.#{message}", options)
+        I18n.t(:"#{scope}.#{message}", **options).then { |msg|
+          # Ensure that auth keys at the start of the translated string are properly cased.
+          msg.start_with?(human_keys.first) ? msg.upcase_first : msg
+        }
       else
         message.to_s
       end
+    end
+
+    def i18n_locale
+      warden_options[:locale]
     end
 
     def redirect_url
@@ -120,7 +139,7 @@ module Devise
         path = if request.get?
           attempted_path
         else
-          request.referrer
+          extract_path_from_location(request.referrer)
         end
 
         path || scope_url
@@ -137,7 +156,7 @@ module Devise
       opts  = {}
 
       # Initialize script_name with nil to prevent infinite loops in
-      # authenticated mounted engines in rails 4.2 and 5.0
+      # authenticated mounted engines
       opts[:script_name] = nil
 
       route = route(scope)
@@ -149,13 +168,6 @@ module Devise
 
       if relative_url_root?
         opts[:script_name] = relative_url_root
-
-      # We need to add the rootpath to `script_name` manually for applications that use a Rails
-      # version lower than 5.1. Otherwise, it is going to generate a wrong path for Engines
-      # that use Devise. Remove it when the support of Rails 5.0 is droped.
-      elsif root_path_defined?(context) && !rails_51_and_up?
-        rootpath = context.routes.url_helpers.root_path
-        opts[:script_name] = rootpath.chomp('/') if rootpath.length > 1
       end
 
       if context.respond_to?(route)
@@ -168,7 +180,7 @@ module Devise
     end
 
     def skip_format?
-      %w(html */*).include? request_format.to_s
+      %w(html */* turbo_stream).include? request_format.to_s
     end
 
     # Choose whether we should respond in an HTTP authentication fashion,
@@ -271,15 +283,5 @@ module Devise
     end
 
     ActiveSupport.run_load_hooks(:devise_failure_app, self)
-
-    private
-
-    def root_path_defined?(context)
-      defined?(context.routes) && context.routes.url_helpers.respond_to?(:root_path)
-    end
-
-    def rails_51_and_up?
-      Rails.gem_version >= Gem::Version.new("5.1")
-    end
   end
 end

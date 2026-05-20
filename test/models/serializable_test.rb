@@ -7,21 +7,6 @@ class SerializableTest < ActiveSupport::TestCase
     @user = create_user
   end
 
-  test 'should not include unsafe keys on XML' do
-    assert_match(/email/, @user.to_xml)
-    assert_no_match(/confirmation-token/, @user.to_xml)
-  end
-
-  test 'should not include unsafe keys on XML even if a new except is provided' do
-    assert_no_match(/email/, @user.to_xml(except: :email))
-    assert_no_match(/confirmation-token/, @user.to_xml(except: :email))
-  end
-
-  test 'should include unsafe keys on XML if a force_except is provided' do
-    assert_no_match(/<email/, @user.to_xml(force_except: :email))
-    assert_match(/confirmation-token/, @user.to_xml(force_except: :email))
-  end
-
   test 'should not include unsafe keys on JSON' do
     keys = from_json().keys.select{ |key| !key.include?("id") }
     assert_equal %w(created_at email facebook_token updated_at username), keys.sort
@@ -43,7 +28,7 @@ class SerializableTest < ActiveSupport::TestCase
   end
 
   test 'should accept frozen options' do
-    assert_key "username", @user.as_json({only: :username}.freeze)["user"]
+    assert_key "username", @user.as_json({ only: :username, except: [:email].freeze }.freeze)["user"]
   end
 
   def assert_key(key, subject)
@@ -51,10 +36,10 @@ class SerializableTest < ActiveSupport::TestCase
   end
 
   def assert_no_key(key, subject)
-    assert !subject.key?(key), "Expected #{subject.inspect} to not have key #{key.inspect}"
+    assert_not subject.key?(key), "Expected #{subject.inspect} to not have key #{key.inspect}"
   end
 
-  def from_json(options=nil)
+  def from_json(options = nil)
     ActiveSupport::JSON.decode(@user.to_json(options))["user"]
   end
 end

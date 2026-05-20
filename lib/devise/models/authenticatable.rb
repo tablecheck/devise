@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'active_model/version'
 require 'devise/hooks/activatable'
 require 'devise/hooks/csrf_cleaner'
 
@@ -10,7 +9,7 @@ module Devise
     #
     # == Options
     #
-    # Authenticatable adds the following options to devise_for:
+    # Authenticatable adds the following options to +devise+:
     #
     #   * +authentication_keys+: parameters used for authentication. By default [:email].
     #
@@ -56,7 +55,7 @@ module Devise
     module Authenticatable
       extend ActiveSupport::Concern
 
-      BLACKLIST_FOR_SERIALIZATION = [:encrypted_password, :reset_password_token, :reset_password_sent_at,
+      UNSAFE_ATTRIBUTES_FOR_SERIALIZATION = [:encrypted_password, :reset_password_token, :reset_password_sent_at,
         :remember_created_at, :sign_in_count, :current_sign_in_at, :last_sign_in_at, :current_sign_in_ip,
         :last_sign_in_ip, :password_salt, :confirmation_token, :confirmed_at, :confirmation_sent_at,
         :remember_token, :unconfirmed_email, :failed_attempts, :unlock_token, :locked_at]
@@ -105,12 +104,12 @@ module Devise
       # given to :except will simply add names to exempt to Devise internal list.
       def serializable_hash(options = nil)
         options = options.try(:dup) || {}
-        options[:except] = Array(options[:except])
+        options[:except] = Array(options[:except]).dup
 
         if options[:force_except]
           options[:except].concat Array(options[:force_except])
         else
-          options[:except].concat BLACKLIST_FOR_SERIALIZATION
+          options[:except].concat UNSAFE_ATTRIBUTES_FOR_SERIALIZATION
         end
 
         super(options)
@@ -153,7 +152,8 @@ module Devise
       #         # If the record is new or changed then delay the
       #         # delivery until the after_commit callback otherwise
       #         # send now because after_commit will not be called.
-      #         if new_record? || changed?
+      #         # For Rails < 6 use `changed?` instead of `saved_changes?`.
+      #         if new_record? || saved_changes?
       #           pending_devise_notifications << [notification, args]
       #         else
       #           render_and_send_devise_message(notification, *args)
@@ -183,11 +183,8 @@ module Devise
       #         # Deliver later with Active Job's `deliver_later`
       #         if message.respond_to?(:deliver_later)
       #           message.deliver_later
-      #         # Remove once we move to Rails 4.2+ only, as `deliver` is deprecated.
-      #         elsif message.respond_to?(:deliver_now)
-      #           message.deliver_now
       #         else
-      #           message.deliver
+      #           message.deliver_now
       #         end
       #       end
       #
@@ -195,12 +192,7 @@ module Devise
       #
       def send_devise_notification(notification, *args)
         message = devise_mailer.send(notification, self, *args)
-        # Remove once we move to Rails 4.2+ only.
-        if message.respond_to?(:deliver_now)
-          message.deliver_now
-        else
-          message.deliver
-        end
+        message.deliver_now
       end
 
       def downcase_keys
@@ -272,17 +264,17 @@ module Devise
           find_first_by_auth_conditions(tainted_conditions)
         end
 
-        def find_first_by_auth_conditions(tainted_conditions, opts={})
+        def find_first_by_auth_conditions(tainted_conditions, opts = {})
           to_adapter.find_first(devise_parameter_filter.filter(tainted_conditions).merge(opts))
         end
 
         # Find or initialize a record setting an error if it can't be found.
-        def find_or_initialize_with_error_by(attribute, value, error=:invalid) #:nodoc:
+        def find_or_initialize_with_error_by(attribute, value, error = :invalid) #:nodoc:
           find_or_initialize_with_errors([attribute], { attribute => value }, error)
         end
 
         # Find or initialize a record with group of attributes based on a list of required attributes.
-        def find_or_initialize_with_errors(required_attributes, attributes, error=:invalid) #:nodoc:
+        def find_or_initialize_with_errors(required_attributes, attributes, error = :invalid) #:nodoc:
           attributes.try(:permit!)
           attributes = attributes.to_h.with_indifferent_access
                                  .slice(*required_attributes)

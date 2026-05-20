@@ -10,7 +10,7 @@ module Devise
       # cause exceptions to be thrown from this method; if you simply want to check
       # if a scope has already previously been authenticated without running
       # authentication hooks, you can directly call `warden.authenticated?(scope: scope)`
-      def signed_in?(scope=nil)
+      def signed_in?(scope = nil)
         [scope || Devise.mappings.keys].flatten.any? do |_scope|
           warden.authenticate?(scope: _scope)
         end
@@ -21,7 +21,7 @@ module Devise
       # to the set_user method in warden.
       # If you are using a custom warden strategy and the timeoutable module, you have to
       # set `env["devise.skip_timeout"] = true` in the request to use this method, like we do
-      # in the sessions controller: https://github.com/plataformatec/devise/blob/master/app/controllers/devise/sessions_controller.rb#L7
+      # in the sessions controller: https://github.com/heartcombo/devise/blob/main/app/controllers/devise/sessions_controller.rb#L7
       #
       # Examples:
       #
@@ -37,16 +37,7 @@ module Devise
 
         expire_data_after_sign_in!
 
-        if options[:bypass]
-          ActiveSupport::Deprecation.warn(<<-DEPRECATION.strip_heredoc, caller)
-          [Devise] bypass option is deprecated and it will be removed in future version of Devise.
-          Please use bypass_sign_in method instead.
-          Example:
-
-            bypass_sign_in(user)
-          DEPRECATION
-          warden.session_serializer.store(resource, scope)
-        elsif warden.user(scope) == resource && !options.delete(:force)
+        if warden.user(scope) == resource && !options.delete(:force)
           # Do nothing. User already signed in and we are not forcing it.
           true
         else
@@ -77,7 +68,7 @@ module Devise
       #   sign_out :user     # sign_out(scope)
       #   sign_out @user     # sign_out(resource)
       #
-      def sign_out(resource_or_scope=nil)
+      def sign_out(resource_or_scope = nil)
         return sign_out_all_scopes unless resource_or_scope
         scope = Devise::Mapping.find_scope!(resource_or_scope)
         user = warden.user(scope: scope, run_callbacks: false) # If there is no user
@@ -92,7 +83,7 @@ module Devise
       # Sign out all active users or scopes. This helper is useful for signing out all roles
       # in one click. This signs out ALL scopes in warden. Returns true if there was at least one logout
       # and false if there was no user logged in on all scopes.
-      def sign_out_all_scopes(lock=true)
+      def sign_out_all_scopes(lock = true)
         users = Devise.mappings.keys.map { |s| warden.user(scope: s, run_callbacks: false) }
 
         warden.logout
@@ -106,10 +97,6 @@ module Devise
       private
 
       def expire_data_after_sign_in!
-        # session.keys will return an empty array if the session is not yet loaded.
-        # This is a bug in both Rack and Rails.
-        # A call to #empty? forces the session to be loaded.
-        session.empty?
         session.keys.grep(/^devise\./).each { |k| session.delete(k) }
       end
 

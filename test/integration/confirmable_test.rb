@@ -43,12 +43,12 @@ class ConfirmationTest < Devise::IntegrationTest
   test 'user with valid confirmation token should not be able to confirm an account after the token has expired' do
     swap Devise, confirm_within: 3.days do
       user = create_user(confirm: false, confirmation_sent_at: 4.days.ago)
-      refute user.confirmed?
+      assert_not user.confirmed?
       visit_user_confirmation_with_token(user.raw_confirmation_token)
 
       assert_have_selector '#error_explanation'
       assert_contain %r{needs to be confirmed within 3 days}
-      refute user.reload.confirmed?
+      assert_not user.reload.confirmed?
       assert_current_url "/users/confirmation?confirmation_token=#{user.raw_confirmation_token}"
     end
   end
@@ -86,7 +86,7 @@ class ConfirmationTest < Devise::IntegrationTest
   test 'user with valid confirmation token should be able to confirm an account before the token has expired' do
     swap Devise, confirm_within: 3.days do
       user = create_user(confirm: false, confirmation_sent_at: 2.days.ago)
-      refute user.confirmed?
+      assert_not user.confirmed?
       visit_user_confirmation_with_token(user.raw_confirmation_token)
 
       assert_contain 'Your email address has been successfully confirmed.'
@@ -132,7 +132,16 @@ class ConfirmationTest < Devise::IntegrationTest
       sign_in_as_user(confirm: false)
 
       assert_contain 'You have to confirm your email address before continuing'
-      refute warden.authenticated?(:user)
+      assert_not warden.authenticated?(:user)
+    end
+  end
+
+  test 'not confirmed user redirect respects i18n locale set' do
+    swap Devise, allow_unconfirmed_access_for: 0.days do
+      sign_in_as_user(confirm: false, visit: new_user_session_path(locale: "pt-BR"))
+
+      assert_contain 'Você precisa confirmar seu email para continuar'
+      assert_not warden.authenticated?(:user)
     end
   end
 
@@ -142,8 +151,8 @@ class ConfirmationTest < Devise::IntegrationTest
         fill_in 'password', with: 'invalid'
       end
 
-      assert_contain 'Invalid Email or password'
-      refute warden.authenticated?(:user)
+      assert_contain 'Invalid email or password'
+      assert_not warden.authenticated?(:user)
     end
   end
 
@@ -175,6 +184,36 @@ class ConfirmationTest < Devise::IntegrationTest
     assert_current_url '/users/sign_in'
   end
 
+  test "should not be able to confirm an email with a blank confirmation token" do
+    visit_user_confirmation_with_token("")
+
+    assert_contain %r{Confirmation token can['’]t be blank}
+  end
+
+  test "should not be able to confirm an email with a nil confirmation token" do
+    visit_user_confirmation_with_token(nil)
+
+    assert_contain %r{Confirmation token can['’]t be blank}
+  end
+
+  test "should not be able to confirm user with blank confirmation token" do
+    user = create_user(confirm: false)
+    user.update_attribute(:confirmation_token, "")
+
+    visit_user_confirmation_with_token("")
+
+    assert_contain %r{Confirmation token can['’]t be blank}
+  end
+
+  test "should not be able to confirm user with nil confirmation token" do
+    user = create_user(confirm: false)
+    user.update_attribute(:confirmation_token, nil)
+
+    visit_user_confirmation_with_token(nil)
+
+    assert_contain %r{Confirmation token can['’]t be blank}
+  end
+
   test 'error message is configurable by resource name' do
     store_translations :en, devise: {
       failure: { user: { unconfirmed: "Not confirmed user" } }
@@ -184,40 +223,32 @@ class ConfirmationTest < Devise::IntegrationTest
     end
   end
 
-  test 'resent confirmation token with valid E-Mail in XML format should return valid response' do
+  test 'resent confirmation token with valid e-mail in JSON format should return empty and valid response' do
     user = create_user(confirm: false)
-    post user_confirmation_path(format: 'xml'), params: { user: { email: user.email } }
+    post user_confirmation_path(format: 'json'), params: { user: { email: user.email } }
     assert_response :success
-    assert_equal response.body, {}.to_xml
+    assert_equal({}.to_json, response.body)
   end
 
-  test 'resent confirmation token with invalid E-Mail in XML format should return invalid response' do
+  test 'resent confirmation token with invalid e-mail in JSON format should return invalid response' do
     create_user(confirm: false)
-    post user_confirmation_path(format: 'xml'), params: { user: { email: 'invalid.test@test.com' } }
+    post user_confirmation_path(format: 'json'), params: { user: { email: 'invalid.test@test.com' } }
     assert_response :unprocessable_entity
-    assert response.body.include? %(<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<errors>)
+    assert_includes response.body, '{"errors":{'
   end
 
-  test 'confirm account with valid confirmation token in XML format should return valid response' do
+  test 'confirm account with valid confirmation token in JSON format should return valid response' do
     user = create_user(confirm: false)
-    get user_confirmation_path(confirmation_token: user.raw_confirmation_token, format: 'xml')
+    get user_confirmation_path(confirmation_token: user.raw_confirmation_token, format: 'json')
     assert_response :success
-    assert response.body.include? %(<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<user>)
+    assert_includes response.body, '{"user":{'
   end
 
-  test 'confirm account with invalid confirmation token in XML format should return invalid response' do
+  test 'confirm account with invalid confirmation token in JSON format should return invalid response' do
     create_user(confirm: false)
-    get user_confirmation_path(confirmation_token: 'invalid_confirmation', format: 'xml')
+    get user_confirmation_path(confirmation_token: 'invalid_confirmation', format: 'json')
     assert_response :unprocessable_entity
-    assert response.body.include? %(<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<errors>)
-  end
-
-  test 'request an account confirmation account with JSON, should return an empty JSON' do
-    user = create_user(confirm: false)
-
-    post user_confirmation_path, params: { user: { email: user.email }, format: :json }
-    assert_response :success
-    assert_equal response.body, {}.to_json
+    assert_includes response.body, '{"confirmation_token":['
   end
 
   test "when in paranoid mode and with a valid e-mail, should not say that the e-mail is valid" do
@@ -252,7 +283,7 @@ class ConfirmationTest < Devise::IntegrationTest
 end
 
 class ConfirmationOnChangeTest < Devise::IntegrationTest
-  def create_second_admin(options={})
+  def create_second_admin(options = {})
     @admin = nil
     create_admin(options)
   end
@@ -286,7 +317,7 @@ class ConfirmationOnChangeTest < Devise::IntegrationTest
     assert_contain 'Your email address has been successfully confirmed.'
     assert_current_url '/admin_area/sign_in'
     assert admin.reload.confirmed?
-    refute admin.reload.pending_reconfirmation?
+    assert_not admin.reload.pending_reconfirmation?
   end
 
   test 'admin with previously valid confirmation token should not be able to confirm email after email changed again' do
@@ -308,7 +339,7 @@ class ConfirmationOnChangeTest < Devise::IntegrationTest
     assert_contain 'Your email address has been successfully confirmed.'
     assert_current_url '/admin_area/sign_in'
     assert admin.reload.confirmed?
-    refute admin.reload.pending_reconfirmation?
+    assert_not admin.reload.pending_reconfirmation?
   end
 
   test 'admin email should be unique also within unconfirmed_email' do
@@ -322,5 +353,33 @@ class ConfirmationOnChangeTest < Devise::IntegrationTest
     assert_have_selector '#error_explanation'
     assert_contain(/Email.*already.*taken/)
     assert admin.reload.pending_reconfirmation?
+  end
+
+  test 'concurrent "update email" requests should not allow confirming a victim email address' do
+    attacker_email = "attacker@example.com"
+    victim_email = "victim@example.com"
+
+    attacker = create_admin
+    # update the email address of the attacker, but do not confirm it yet
+    attacker.update!(email: attacker_email)
+
+    # A new request starts, to update the unconfirmed email again.
+    attacker = Admin.find_by(id: attacker.id)
+
+    # A concurrent request also updates the email address to the victim, while the `attacker` request's model is in memory
+    Admin.where(id: attacker.id).update_all(
+      unconfirmed_email: victim_email,
+      confirmation_token: "different token"
+    )
+
+    # Now the attacker updates to the same prior unconfirmed email address, and confirm.
+    # This should update the `unconfirmed_email` in the database, even though it is unchanged from the models point of view.
+    attacker.update!(email: attacker_email)
+    attacker_token = attacker.raw_confirmation_token
+    visit_admin_confirmation_with_token(attacker_token)
+
+    attacker.reload
+    assert attacker.confirmed?
+    assert_equal attacker_email, attacker.email
   end
 end

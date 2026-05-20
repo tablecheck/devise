@@ -6,7 +6,7 @@ class FakeRequest < Struct.new(:path_info, :params)
 end
 
 class MappingTest < ActiveSupport::TestCase
-  def fake_request(path, params={})
+  def fake_request(path, params = {})
     FakeRequest.new(path, params)
   end
 
@@ -117,7 +117,7 @@ class MappingTest < ActiveSupport::TestCase
     assert mapping.authenticatable?
     assert mapping.recoverable?
     assert mapping.lockable?
-    refute mapping.omniauthable?
+    assert_not mapping.omniauthable?
   end
 
   test 'find mapping by path' do

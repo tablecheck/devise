@@ -7,7 +7,7 @@ module Devise
     #
     # ==Options
     #
-    # Recoverable adds the following options to devise_for:
+    # Recoverable adds the following options to +devise+:
     #
     #   * +reset_password_keys+: the keys you want to use when recovering the password for an account
     #   * +reset_password_within+: the time period within which the password must be reset or the token expires.
@@ -99,24 +99,13 @@ module Devise
           send_devise_notification(:reset_password_instructions, token, {})
         end
 
-        if Devise.activerecord51?
-          def clear_reset_password_token?
-            encrypted_password_changed = respond_to?(:will_save_change_to_encrypted_password?) && will_save_change_to_encrypted_password?
-            authentication_keys_changed = self.class.authentication_keys.any? do |attribute|
-              respond_to?("will_save_change_to_#{attribute}?") && send("will_save_change_to_#{attribute}?")
-            end
-
-            authentication_keys_changed || encrypted_password_changed
+        def clear_reset_password_token?
+          encrypted_password_changed = devise_respond_to_and_will_save_change_to_attribute?(:encrypted_password)
+          authentication_keys_changed = self.class.authentication_keys.any? do |attribute|
+            devise_respond_to_and_will_save_change_to_attribute?(attribute)
           end
-        else
-          def clear_reset_password_token?
-            encrypted_password_changed = respond_to?(:encrypted_password_changed?) && encrypted_password_changed?
-            authentication_keys_changed = self.class.authentication_keys.any? do |attribute|
-              respond_to?("#{attribute}_changed?") && send("#{attribute}_changed?")
-            end
 
-            authentication_keys_changed || encrypted_password_changed
-          end
+          authentication_keys_changed || encrypted_password_changed
         end
 
       module ClassMethods
@@ -131,7 +120,7 @@ module Devise
         # password instructions to it. If user is not found, returns a new user
         # with an email not found error.
         # Attributes must contain the user's email
-        def send_reset_password_instructions(attributes={})
+        def send_reset_password_instructions(attributes = {})
           recoverable = find_or_initialize_with_errors(reset_password_keys, attributes, :not_found)
           recoverable.send_reset_password_instructions if recoverable.persisted?
           recoverable
@@ -142,7 +131,7 @@ module Devise
         # try saving the record. If not user is found, returns a new user
         # containing an error in reset_password_token attribute.
         # Attributes must contain reset_password_token, password and confirmation
-        def reset_password_by_token(attributes={})
+        def reset_password_by_token(attributes = {})
           original_token       = attributes[:reset_password_token]
           reset_password_token = Devise.token_generator.digest(self, :reset_password_token, original_token)
 

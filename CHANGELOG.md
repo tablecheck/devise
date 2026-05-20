@@ -1,308 +1,88 @@
-### Unreleased
+### 5.0.4 - 2026-05-08
+
+* security fixes
+  * Fix open redirect in `FailureApp` via unvalidated `Referer` header on non-GET session timeout. CVE-2026-40295 [GHSA-jp94-3292-c3xv](https://github.com/heartcombo/devise/security/advisories/GHSA-jp94-3292-c3xv)
+
+### 5.0.3 - 2026-03-16
+
+* security fixes
+  * Fix race condition vulnerability on confirmable "change email" which would allow confirming an email they don't own CVE-2026-32700 [GHSA-57hq-95w6-v4fc](https://github.com/heartcombo/devise/security/advisories/GHSA-57hq-95w6-v4fc) [#5783](https://github.com/heartcombo/devise/pull/5783) [#5784](https://github.com/heartcombo/devise/pull/5784)
+
+### 5.0.2 - 2026-02-18
 
 * enhancements
-  * Add `autocomplete="new-password"` to `password_confirmation` fields (by @ferrl)
-  * Update CI to rails 6.0.0.beta3 (by @tunnes)
-  * refactor method name to be more consistent (by @saiqulhaq)
-  * Fix rails 6.0.rc1 email uniqueness validation deprecation error (by @Vasfed)
-  * Fix rails_51_and_up? method for Rails 6.rc1 (by @igorkasyanchuk)
+  * Allow resource class scopes to override the global configuration for `sign_in_after_change_password` behaviour. [#5825](https://github.com/heartcombo/devise/pull/5825)
+    * _Note_: some users ran into an issue with this change because `RegistrationsController` now relies on a setting from the `:registerable` module. These users were configuring their own routes pointing to the `RegistrationsController` for resource edit/update actions mostly, without relying on the other registration actions (e.g. user sign up.), so they omitted `:registerable` from the model declaration. While using just a portion of the controller functionality is a valid use for `:registerable` (or any module really), the module must still be declared in the model, much like the other modules must be declared if you plan on using just a portion of their behavior. Please check [this issue](https://github.com/heartcombo/devise/pull/5828#issuecomment-3926822788) for more info.
+  * Add `sign_in_after_reset_password?` check hook to passwords controller, to allow it to be customized by users. [#5826](https://github.com/heartcombo/devise/pull/5826)
 
-### 4.6.2 - 2019-03-26
+### 5.0.1 - 2026-02-13
 
 * bug fixes
-  * Revert "Set `encrypted_password` to `nil` when `password` is set to `nil`" since it broke backward compatibility with existing applications. See more on https://github.com/plataformatec/devise/issues/5033#issuecomment-476386275 (by @mracos)
+  * Fix translation issue with German `E-Mail` on invalid authentication messages caused by previous fix for incorrect grammar [#5822](https://github.com/heartcombo/devise/pull/5822)
 
-### 4.6.1 - 2019-02-11
+### 5.0.0 - 2026-01-23
 
-* bug fixes
-  * Check if `root_path` is defined with `#respond_to?` instead of `#present` (by @tegon)
+no changes
 
-### 4.6.0 - 2019-02-07
+### 5.0.0.rc - 2025-12-31
 
-* enhancements
-  * Allow to skip email and password change notifications (by @iorme1)
-  * Include the use of `nil` for `allow_unconfirmed_access_for` in the docs (by @joaumg)
-  * Ignore useless files into the `.gem` file (by @huacnlee)
-  * Explain the code that prevents enumeration attacks inside `Devise::Strategies::DatabaseAuthenticatable` (by @tegon)
-  * Refactor the `devise_error_messages!` helper to render a partial (by @prograhamer)
-  * Add an option (`Devise.sign_in_after_change_password`) to not automatically sign in a user after changing a password (by @knjko)
+* breaking changes
+  * Drop support to Ruby < 2.7
+  * Drop support to Rails < 7.0
+  * Remove deprecated `:bypass` option from `sign_in` helper, use `bypass_sign_in` instead. [#5803](https://github.com/heartcombo/devise/pull/5803)
+  * Remove deprecated `devise_error_messages!` helper, use `render "devise/shared/error_messages", resource: resource` instead. [#5803](https://github.com/heartcombo/devise/pull/5803)
+  * Remove deprecated `scope` second argument from `sign_in(resource, :admin)` controller test helper, use `sign_in(resource, scope: :admin)` instead. [#5803](https://github.com/heartcombo/devise/pull/5803)
+  * Remove deprecated `Devise::TestHelpers`, use `Devise::Test::ControllerHelpers` instead. [#5803](https://github.com/heartcombo/devise/pull/5803)
+  * Remove deprecated `Devise::Models::Authenticatable::BLACKLIST_FOR_SERIALIZATION` [#5598](https://github.com/heartcombo/devise/pull/5598)
+  * Remove deprecated `Devise.activerecord51?` method.
+  * Remove `SecretKeyFinder` and use `app.secret_key_base` as the default secret key for `Devise.secret_key` if a custom `Devise.secret_key` is not provided.
 
-* bug fixes
-  * Fix missing comma in Simple Form generator (by @colinross)
-  * Fix error with migration generator in Rails 6 (by @oystersauce8)
-  * Set `encrypted_password` to `nil` when `password` is set to `nil` (by @sivagollapalli)
-  * Consider whether the request supports flash messages inside `Devise::Controllers::Helpers#is_flashing_format?` (by @colinross)
-  * Fix typo inside `Devise::Generators::ControllersGenerator` (by @kopylovvlad)
-  * Sanitize parameters inside `Devise::Models::Authenticatable#find_or_initialize_with_errors` (by @rlue)
-  * `#after_database_authentication` callback was not called after authentication on password reset (by @kanmaniselvan)
-  * Fix corner case when `#confirmation_period_valid?` was called at the same second as `confirmation_sent_at` was set. Mostly true for date types that only have second precisions. (by @stanhu)
-  * Fix unclosed `li` tag in `error_messages` partial (by @mracos)
-  * Fix Routes issue when devise engine is mounted in another engine on Rails versions lower than 5.1 (by @a-barbieri)
-  * Make `#increment_failed_attempts` concurrency safe (by @tegon)
-  * Apply Test Helper fix to Rails 6.0 as well as 5.x (by @matthewrudy)
+    This is potentially a breaking change because Devise previously used the following order to find a secret key:
 
-
-* deprecations
-  * The second argument of `DatabaseAuthenticatable`'s `#update_with_password` and `#update_without_password` is deprecated and will be removed in the next major version. It was added to support a feature deprecated in Rails 4, so you can safely remove it from your code. (by @ihatov08)
-  * The `DeviseHelper.devise_error_messages!` is deprecated and will be removed in the next major version. Use the `devise/shared/error_messages` partial instead. (by @mracos)
-
-### 4.5.0 - 2018-08-15
-
-* enhancements
-  * Use `before_action` instead of `before_filter` (by @edenthecat)
-  *  Allow people to extend devise failure app, through invoking `ActiveSupport.run_load_hooks` once `Devise::FailureApp` is loaded (by @wnm)
-  * Use `update` instead of `update_attributes` (by @koic)
-  * Split IP resolution from `update_tracked_fields` (by @mckramer)
-  * upgrade dependencies for rails and responders (by @lancecarlson)
-  * Add `autocomplete="new-password"` to new password fields (by @gssbzn)
-  * Add `autocomplete="current-password"` to current password fields (by @gssbzn)
-  * Remove redundant `self` from `database_authenticatable` module (by @abhishekkanojia)
-  * Update `simple_form` templates with changes from https://github.com/plataformatec/devise/commit/16b3d6d67c7e017d461ea17ed29ea9738dc77e83 and https://github.com/plataformatec/devise/commit/6260c29a867b9a656f1e1557abe347a523178fab (by @gssbzn)
-  * Remove `:trackable` from the default modules in the generators, to be more GDPR-friendly (by @fakenine)
-
-* bug fixes
-  * Use same string on failed login regardless of whether account exists when in paranoid mode (by @TonyMK9068)
-  * Fix error when params is not a hash inside `Devise::ParameterSanitizer` (by @b0nn1e)
-  * Look for `secret_key_base` inside `Rails.application` (by @gencer)
-  * Ensure `Devise::ParameterFilter` does not add missing keys when called with a hash that has a `default` / `default_proc`
-configured (by @joshpencheon)
-  * Adds `is_navigational_format?` check to `after_sign_up_path_for` to keep consistency (by @iorme1)
-
-### 4.4.3 - 2018-03-17
-
-* bug fixes
-  * Fix undefined method `rails5?` for Devise::Test:Module (by @tegon)
-  * Fix: secret key was being required to be set inside credentials on Rails 5.2 (by @tegon)
-
-### 4.4.2 - 2018-03-15
-
-* enhancements
-  * Support for :credentials on Rails v5.2.x. (by @gencer)
-  * Improve documentation about the test suite. (by @tegon)
-  * Test with Rails 5.2.rc1 on Travis. (by @jcoyne)
-  * Allow test with Rails 6. (by @Fudoshiki)
-  * Creating a new section for controller configuration on `devise.rb` template (by @Danilo-Araujo-Silva)
-
-* bug fixes
-  * Preserve content_type for unauthenticated tests (by @gmcnaughton)
-  * Check if the resource is persisted in `update_tracked_fields!` instead of performing validations (by @tegon)
-  * Revert "Replace log_process_action to append_info_to_payload" (by @tegon)
-
-### 4.4.1 - 2018-01-23
-
-* bug fixes
-  * Ensure Gemspec is loaded as utf-8. (by @segiddins)
-  * Fix `ActiveRecord` check on `Confirmable`. (by @tegon)
-  * Fix `signed_in?` docs without running auth hooks. by (@machty)
-
-### 4.4.0 - 2017-12-29
-
-* enhancements
-  * Add `frozen_string_literal` pragma comment to all Ruby files. (by @pat)
-  * Use `set_flash_method!` instead of `set_flash_method` in `Devise::OmniauthCallbacksController#failure`. (by @saichander17)
-  * Clarify how `store_location_for` modifies URIs. (by @olivierlacan)
-  * Move `failed_attempts` increment into its own function. by (@mobilutz)
-  * Add `autocomplete="email"` to email fields. by (@MikeRogers0)
-  * Add the ability to change the default migrations path introduced in Rails 5.0.3.  (by @alexhifer)
-  * Delete unnecessary condition for helper method. (by @davydovanton)
-  * Support `id: :uuid` option for migrations. (by @filip373)
-
-* bug fixes
-  * Fix syntax for MRI 2.5.0. (by @pat)
-  * Validations were being ignored on singup in the `Trackable#update_tracked_fields!` method. (by @AshleyFoster)
-  * Do not modify options for `#serializable_hash`. (by @guigs)
-  * Email confirmations were being sent on sign in/sign out for application using `mongoid` and `mongoid-paperclip` gems. This is because previously we were checking if a model is from Active Record by checking if the method `after_commit` was defined - since `mongoid` doesn' have one - but `mongoid-paperclip` gem does define one, which cause this issue. (by @fjg)
-
-### 4.3.0 - 2017-05-14
-
-* Enhancements
-  * Dependency support added for Rails 5.1.x.
-
-### 4.2.1 - 2017-03-15
-
-* removals
-  * `Devise::Mailer#scope_name` and `Devise::Mailer#resource` are now protected
-    methods instead of public.
-* bug fixes
-  * Attempt to reset password without the password field in the request now results in a `:blank` validation error.
-    Before this change, Devise would accept the reset password request and log the user in, without validating/changing
-    the password. (by @victor-am)
-  * Confirmation links now expire based on UTC time, working properly when using different timezones. (by @jjuliano)
-* enhancements
-  * Notify the original email when it is changed with a new `Devise.send_email_changed_notification` setting.
-    When using `reconfirmable`, the notification will be sent right away instead of when the unconfirmed email is confirmed.
-    (original change by @ethirajsrinivasan)
-
-### 4.2.0 - 2016-07-01
-
-* removals
-  * Remove the deprecated `Devise::ParameterSanitizer` API from Devise 3.
-    Please use the `#permit` and `#sanitize` methods over `#for`.
-  * Remove the deprecated OmniAuth URL helpers. Use the fully qualified helpers
-    (`user_facebook_omniauth_authorize_path`) over the scope based helpers
-    ( `user_omniauth_authorize_path(:facebook)`).
-  * Remove the `Devise.bcrypt` method, use `Devise::Encryptor.digest` instead.
-  * Remove the `Devise::Models::Confirmable#confirm!` method, use `confirm` instead.
-  * Remove the `Devise::Models::Recoverable#reset_password!` method, use `reset_password` instead.
-  * Remove the `Devise::Models::Recoverable#after_password_reset` method.
-* bug fixes
-  * Fix an `ActionDispatch::IllegalStateError` when testing controllers with Rails 5 rc 2(by @hamadata).
-  * Use `ActiveSupport.on_load` hooks to include Devise on `ActiveRecord` and `Mongoid`,
-    avoiding autoloading these constants too soon (by @lucasmazza, @rafaelfranca).
-* enhancements
-  * Display the minimum password length on `registrations/edit` view (by @Yanchek99).
-  * You can disable Devise's routes reloading on boot by through the `reload_routes = false` config.
-    This can reduce the time taken to boot the application but it might trigger
-    some errors if you application (mostly your controllers) requires that
-    Devise mappings be loaded during boot time (by @sidonath).
-  * Added `Devise::Test::IntegrationHelpers` to bypass the sign in process using
-    Warden test API (by @lucasmazza).
-  * Define `inspect` in `Devise::Models::Authenticatable` to help ensure password hashes
-    aren't included in exceptions or otherwise accidentally serialized (by @tkrajcar).
-  * Add missing support of `Rails.application.config.action_controller.relative_url_root` (by @kosdiamantis).
-* deprecations
-  * `Devise::TestHelpers` is deprecated in favor of `Devise::Test::ControllerHelpers`
-    (by @lucasmazza).
-  * The `sign_in` test helper has changed to use keyword arguments when passing
-    a scope. `sign_in :admin, users(:alice)` should be rewritten as
-    `sign_in users(:alice), scope: :admin` (by @lucasmazza).
-  * The option `bypass` of `Devise::Controllers::SignInOut#sign_in` method is
-    deprecated in favor of `Devise::Controllers::SignInOut#bypass_sign_in`
-    method (by @ulissesalmeida).
-
-### 4.1.1 - 2016-05-15
-
-* bug fixes
-  * Fix overwriting the remember_token when a valid one already exists (by @ralinchimev).
-
-### 4.1.0
-
-* bug fixes
-  * Fix race condition of sending the confirmation instructions e-mail using background jobs.
-    Using the previous `after_create` callback, the e-mail can be sent before
-    the record be committed on database, generating a `ActiveRecord::NotFound` error.
-    Now the confirmation e-mail will be only sent after the database commit,
-    using the `after_commit` callback.
-    It may break your test suite on Rails 4 if you are testing the sent e-mails
-    or enqueued jobs using transactional fixtures enabled or `DatabaseCleaner` with `transaction` strategy.
-    You can easily fix your test suite using the gem
-    [test_after_commit](https://github.com/grosser/test_after_commit). For example, put in your Gemfile:
-
-    ```ruby
-      gem 'test_after_commit', :group => :test
+    ```
+    app.credentials.secret_key_base > app.secrets.secret_key_base > application.config.secret_key_base > application.secret_key_base
     ```
 
-    On Rails 5 `after_commit` callbacks are triggered even using transactional
-    fixtures, then this fix will not break your test suite. If you are using `DatabaseCleaner` with the `deletion` or `truncation` strategies it may not break your tests. (by @allenwq)
-  * Fix strategy checking in `Lockable#unlock_strategy_enabled?` for `:none` and
-  `:undefined` strategies. (by @f3ndot)
-* features
-  * Humanize authentication keys in failure flash message (by @byzg)
-    When you are configuring the translations of `devise.failure.invalid`, the
-    `authentication_keys` is translated now.
-* deprecations
-  * Remove code supporting old session serialization format (by @fphilipe).
-  * Now the `email_regexp` default uses a more permissive regex:
-    `/\A[^@\s]+@[^@\s]+\z/` (by @kimgb)
-  * Now the `strip_whitespace_keys` default is `[:email]` (by @ulissesalmeida)
-  * Now the `reconfirmable` default is `true` (by @ulissesalmeida)
-  * Now the `skip_session_storage` default is `[:http_auth]` (by @ulissesalmeida)
-  * Now the `sign_out_via` default is `:delete` (by @ulissesalmeida)
-* improvements
-  * Avoids extra computation of friendly token for confirmation token (by @sbc100)
+    Now, it always uses `application.secret_key_base`. Make sure you're using the same secret key after the upgrade; otherwise, previously generated tokens for `recoverable`, `lockable`, and `confirmable` will be invalid.
+    [#5645](https://github.com/heartcombo/devise/pull/5645)
+  * Change password instructions button label on devise view from `Send me reset password instructions` to `Send me password reset instructions` [#5515](https://github.com/heartcombo/devise/pull/5515)
+  * Change `<br>` tags separating form elements to wrapping them in `<p>` tags [#5494](https://github.com/heartcombo/devise/pull/5494)
+  * Replace `[data-turbo-cache=false]` with `[data-turbo-temporary]` on `devise/shared/error_messages` partial. This has been [deprecated by Turbo since v7.3.0 (released on Mar 1, 2023)](https://github.com/hotwired/turbo/releases/tag/v7.3.0).
 
-### 4.0.3 - 2016-05-15
-
-  * bug fixes
-    * Fix overwriting the remember_token when a valid one already exists (by @ralinchimev).
-
-### 4.0.2 - 2016-05-02
-
-* bug fixes
-  * Fix strategy checking in `Lockable#unlock_strategy_enabled?` for `:none`
-    and `:undefined` strategies. (by @f3ndot)
-
-### 4.0.1 - 2016-04-25
-
-* bug fixes
-  * Fix the e-mail confirmation instructions send when a user updates the email
-    address from nil. (by @lmduc)
-  * Remove unnecessary `attribute_will_change!` call. (by @cadejscroggins)
-  * Consistent `permit!` check. (by @ulissesalmeida)
-
-### 4.0.0 - 2016-04-18
-
-* bug fixes
-  * Fix the `extend_remember_period` configuration. When set to `false` it does
-    not update the cookie expiration anymore.(by @ulissesalmeida)
-
-* deprecations
-  * Added a warning of default value change in Devise 4.1 for users that uses
-    the the default configuration of the following configurations: (by @ulissesalmeida)
-    * `strip_whitespace_keys` - The default will be `[:email]`.
-    * `skip_session_storage` - The default will be `[:http_auth]`.
-    * `sign_out_via` - The default will be `:delete`.
-    * `reconfirmable` - The default will be `true`.
-    * `email_regexp` - The default will be `/\A[^@\s]+@[^@\s]+\z/`.
-  * Removed deprecated argument of `Devise::Models::Rememberable#remember_me!` (by @ulissesalmeida)
-  * Removed deprecated private method Devise::Controllers::Helpers#expire_session_data_after_sign_in!
-    (by @bogdanvlviv)
-
-### 4.0.0.rc2 - 2016-03-09
+    If you are using an older version of Turbo and the default devise template, you'll need to copy it over to your app and change that back to `[data-turbo-cache=false]`.
 
 * enhancements
-  * Introduced `DeviseController#set_flash_message!` for conditional flash
-    messages setting to reduce complexity.
-  * `rails g devise:install` will fail if the app does not have a ORM configured
-    (by @arjunsharma)
-  * Support to Rails 5 versioned migrations added.
+  * Add Rails 8 support.
+    - Routes are lazy-loaded by default in test and development environments now so Devise loads them before `Devise.mappings` call. [#5728](https://github.com/heartcombo/devise/pull/5728)
+  * New apps using Rack 3.1+ will be generated using `config.responder.error_status = :unprocessable_content`, since [`:unprocessable_entity` has been deprecated by Rack](https://github.com/rack/rack/pull/2137).
 
-* deprecations
-  * omniauth routes are no longer defined with a wildcard `:provider` parameter,
-    and provider specific routes are defined instead, so route helpers like `user_omniauth_authorize_path(:github)` are deprecated in favor of `user_github_omniauth_authorize_path`.
-    You can still use `omniauth_authorize_path(:user, :github)` if you need to
-    call the helpers dynamically.
+    Latest versions of [Rails transparently convert `:unprocessable_entity` -> `:unprocessable_content`](https://github.com/rails/rails/pull/53383), and Devise will use that in the failure app to avoid Rack deprecation warnings for apps that are configured with `:unprocessable_entity`. They can also simply change their `error_status` to `:unprocessable_content` in latest Rack versions to avoid the warning.
+  * Add Ruby 3.4 and 4.0 support.
+  * Reenable Mongoid test suite across all Rails 7+ versions, to ensure we continue supporting it. Changes to dirty tracking to support Mongoid 8.0+. [#5568](https://github.com/heartcombo/devise/pull/5568)
+  * Password length validator is changed from
 
-### 4.0.0.rc1 - 2016-02-01
-
-* Support added to Rails 5 (by @twalpole).
-* Devise no longer supports Rails 3.2 and 4.0.
-* Devise no longer supports Ruby 1.9 and 2.0.
-
-* deprecations
-  * The `devise_parameter_sanitize` API has changed:
-    The `for` method was deprecated in favor of `permit`:
-
-    ```ruby
-    def configure_permitted_parameters
-      devise_parameter_sanitizer.for(:sign_up) << :subscribe_newsletter
-      # Should become the following.
-      devise_parameter_sanitizer.permit(:sign_up, keys: [:subscribe_newsletter])
-    end
+    ```
+    validates_length_of :password, within: password_length, allow_blank: true`
     ```
 
-    The customization through instance methods on the sanitizer implementation
-    should be done through it's `initialize` method:
+    to
 
-    ```ruby
-    class User::ParameterSanitizer < Devise::ParameterSanitizer
-      def sign_up
-        default_params.permit(:username, :email)
-      end
-    end
-
-    # The `sign_up` method can be a `permit` call on the sanitizer `initialize`.
-
-    class User::ParameterSanitizer < Devise::ParameterSanitizer
-      def initialize(*)
-        super
-        permit(:sign_up, keys: [:username, :email])
-      end
-    end
+    ```
+    validates_length_of :password, minimum: proc { password_length.min }, maximum: proc { password_length.max }, allow_blank: true
     ```
 
-    You can check more examples and explanations on the [README section](README.md#strong-parameters)
-    and on the [ParameterSanitizer docs](lib/devise/parameter_sanitizer.rb).
+    so it's possible to override `password_length` at runtime. [#5734](https://github.com/heartcombo/devise/pull/5734)
 
-Please check [3-stable](https://github.com/plataformatec/devise/blob/3-stable/CHANGELOG.md)
+* bug fixes
+  * Make `Devise` work without `ActionMailer` when `Zeitwerk` autoloader is used. [#5731](https://github.com/heartcombo/devise/pull/5731)
+  * Handle defaults `:from` and `:reply_to` as procs correctly by delegating to Rails [#5595](https://github.com/heartcombo/devise/pull/5595)
+  * Use `OmniAuth.config.allowed_request_methods` as routing verbs for the auth path [#5508](https://github.com/heartcombo/devise/pull/5508)
+  * Handle `on` and `ON` as true values to check params [#5514](https://github.com/heartcombo/devise/pull/5514)
+  * Fix passing `format` option to `devise_for` [#5732](https://github.com/heartcombo/devise/pull/5732)
+  * Use `ActiveRecord::SecurityUtils.secure_compare` in `Devise.secure_compare` to match two empty strings correctly. [#4829](https://github.com/heartcombo/devise/pull/4829)
+  * Respond with `401 Unauthorized` for non-navigational requests to destroy the session when there is no authenticated resource. [#4878](https://github.com/heartcombo/devise/pull/4878)
+  * Fix incorrect grammar of invalid authentication message with capitalized attributes, e.g.: "Invalid Email or password" => "Invalid email or password". (originally introduced by [#4014](https://github.com/heartcombo/devise/pull/4014), released on v4.1.0) [#4834](https://github.com/heartcombo/devise/pull/4834)
+
+
+Please check [4-stable](https://github.com/heartcombo/devise/blob/4-stable/CHANGELOG.md)
 for previous changes.

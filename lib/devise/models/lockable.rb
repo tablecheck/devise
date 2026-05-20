@@ -18,7 +18,7 @@ module Devise
     #   * +maximum_attempts+: how many attempts should be accepted before blocking the user.
     #   * +lock_strategy+: lock the user account by :failed_attempts or :none.
     #   * +unlock_strategy+: unlock the user account by :time, :email, :both or :none.
-    #   * +unlock_in+: the time you want to lock the user after to lock happens. Only available when unlock_strategy is :time or :both.
+    #   * +unlock_in+: the time you want to unlock the user after lock happens. Only available when unlock_strategy is :time or :both.
     #   * +unlock_keys+: the keys you want to use when locking and unlocking an account
     #
     module Lockable
@@ -57,6 +57,14 @@ module Devise
         save(validate: false)
       end
 
+      # Resets failed attempts counter to 0.
+      def reset_failed_attempts!
+        if respond_to?(:failed_attempts) && !failed_attempts.to_i.zero?
+          self.failed_attempts = 0
+          save(validate: false)
+        end
+      end
+
       # Verifies whether a user is locked or not.
       def access_locked?
         !!locked_at && !lock_expired?
@@ -76,7 +84,7 @@ module Devise
         if_access_locked { send_unlock_instructions }
       end
 
-      # Overwrites active_for_authentication? from Devise::Models::Activatable for locking purposes
+      # Overwrites active_for_authentication? from Devise::Models::Authenticatable for locking purposes
       # by verifying whether a user is active to sign in or not based on locked?
       def active_for_authentication?
         super && !access_locked?
@@ -110,7 +118,7 @@ module Devise
           false
         end
       end
-      
+
       def increment_failed_attempts
         self.class.increment_counter(:failed_attempts, id)
         reload
@@ -168,7 +176,7 @@ module Devise
         # unlock instructions to it. If not user is found, returns a new user
         # with an email not found error.
         # Options must contain the user's unlock keys
-        def send_unlock_instructions(attributes={})
+        def send_unlock_instructions(attributes = {})
           lockable = find_or_initialize_with_errors(unlock_keys, attributes, :not_found)
           lockable.resend_unlock_instructions if lockable.persisted?
           lockable

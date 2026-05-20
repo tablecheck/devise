@@ -58,7 +58,7 @@ class SessionTimeoutTest < Devise::IntegrationTest
 
       get users_path
       assert_redirected_to users_path
-      refute warden.authenticated?(:user)
+      assert_not warden.authenticated?(:user)
       assert warden.authenticated?(:admin)
     end
   end
@@ -72,12 +72,12 @@ class SessionTimeoutTest < Devise::IntegrationTest
       assert_not_nil last_request_at
 
       get root_path
-      refute warden.authenticated?(:user)
-      refute warden.authenticated?(:admin)
+      assert_not warden.authenticated?(:user)
+      assert_not warden.authenticated?(:admin)
     end
   end
 
-  test 'time out user session after deault limit time and redirect to latest get request' do
+  test 'time out user session after default limit time and redirect to latest get request' do
     user = sign_in_as_user
     visit edit_form_user_path(user)
 
@@ -85,6 +85,26 @@ class SessionTimeoutTest < Devise::IntegrationTest
     sign_in_as_user
 
     assert_equal edit_form_user_url(user), current_url
+  end
+
+  test 'time out on non-GET request does not redirect to an external host supplied via the referer' do
+    user = sign_in_as_user
+    get expire_user_path(user)
+
+    put update_form_user_path(user), headers: { 'HTTP_REFERER' => 'http://evil.example/phishing' }
+
+    assert_response :redirect
+    assert_redirected_to '/phishing'
+  end
+
+  test 'time out on non-GET request with an opaque referer falls back to the sign in page' do
+    user = sign_in_as_user
+    get expire_user_path(user)
+
+    put update_form_user_path(user), headers: { 'HTTP_REFERER' => 'javascript:alert(1)' }
+
+    assert_response :redirect
+    assert_redirected_to new_user_session_path
   end
 
   test 'time out is not triggered on sign out' do
@@ -109,8 +129,8 @@ class SessionTimeoutTest < Devise::IntegrationTest
     follow_redirect!
 
     assert_response :success
-    assert_contain 'Sign in'
-    refute warden.authenticated?(:user)
+    assert_contain 'Log in'
+    assert_not warden.authenticated?(:user)
   end
 
   test 'time out is not triggered on sign in' do
@@ -136,7 +156,7 @@ class SessionTimeoutTest < Devise::IntegrationTest
       get expire_user_path(user)
       get users_path
       assert_redirected_to users_path
-      refute warden.authenticated?(:user)
+      assert_not warden.authenticated?(:user)
     end
   end
 
@@ -167,6 +187,17 @@ class SessionTimeoutTest < Devise::IntegrationTest
     end
   end
 
+  test 'error message redirect respects i18n locale set' do
+    user = sign_in_as_user
+
+    get expire_user_path(user)
+    get root_path(locale: "pt-BR")
+    follow_redirect!
+
+    assert_contain 'Sua sessão expirou. Por favor faça o login novamente para continuar.'
+    assert_not warden.authenticated?(:user)
+  end
+
   test 'time out not triggered if remembered' do
     user = sign_in_as_user remember_me: true
     get expire_user_path(user)
@@ -180,7 +211,9 @@ class SessionTimeoutTest < Devise::IntegrationTest
   test 'does not crash when the last_request_at is a String' do
     user = sign_in_as_user
 
-    get edit_form_user_path(user, last_request_at: Time.now.utc.to_s)
-    get users_path
+    assert_nothing_raised do
+      get edit_form_user_path(user, last_request_at: Time.now.utc.to_s)
+      get users_path
+    end
   end
 end

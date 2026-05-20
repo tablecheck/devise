@@ -37,6 +37,8 @@ module Devise
         @response
       end
 
+      ruby2_keywords(:process) if respond_to?(:ruby2_keywords, true)
+
       # We need to set up the environment variables and the response in the controller.
       def setup_controller_for_warden #:nodoc:
         @request.env['action_controller.instance'] = @controller
@@ -62,17 +64,7 @@ module Devise
       #
       # sign_in users(:alice)
       # sign_in users(:alice), scope: :admin
-      def sign_in(resource, deprecated = nil, scope: nil)
-        if deprecated.present?
-          scope = resource
-          resource = deprecated
-
-          ActiveSupport::Deprecation.warn <<-DEPRECATION.strip_heredoc
-            [Devise] sign_in(:#{scope}, resource) on controller tests is deprecated and will be removed from Devise.
-            Please use sign_in(resource, scope: :#{scope}) instead.
-          DEPRECATION
-        end
-
+      def sign_in(resource, scope: nil)
         scope ||= Devise::Mapping.find_scope!(resource)
 
         warden.instance_variable_get(:@users).delete(scope)
@@ -139,9 +131,8 @@ module Devise
 
           status, headers, response = Devise.warden_config[:failure_app].call(env).to_a
           @controller.response.headers.merge!(headers)
-          @controller.response.content_type = headers["Content-Type"] unless Rails::VERSION::MAJOR >= 5
           @controller.status = status
-          @controller.response.body = response.body
+          @controller.response_body = response.body
           nil # causes process return @response
         end
 

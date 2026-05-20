@@ -23,6 +23,9 @@ class OmniauthableIntegrationTest < Devise::IntegrationTest
       "extra" => {"user_hash" => FACEBOOK_INFO}
     }
     OmniAuth.config.add_camelization 'facebook', 'FaceBook'
+    if OmniAuth.config.respond_to?(:request_validation_phase)
+      OmniAuth.config.request_validation_phase = ->(env) {}
+    end
   end
 
   teardown do
@@ -45,17 +48,17 @@ class OmniauthableIntegrationTest < Devise::IntegrationTest
   test "omniauth sign in should not run model validations" do
     stub_action!(:sign_in_facebook) do
       create_user
-      visit "/users/sign_in"
-      click_link "Sign in with FaceBook"
+      post "/users/auth/facebook"
+      follow_redirect!
       assert warden.authenticated?(:user)
 
-      refute User.validations_performed
+      assert_not User.validations_performed
     end
   end
 
   test "can access omniauth.auth in the env hash" do
-    visit "/users/sign_in"
-    click_link "Sign in with FaceBook"
+    post "/users/auth/facebook"
+    follow_redirect!
 
     json = ActiveSupport::JSON.decode(response.body)
 
@@ -68,8 +71,8 @@ class OmniauthableIntegrationTest < Devise::IntegrationTest
 
   test "cleans up session on sign up" do
     assert_no_difference "User.count" do
-      visit "/users/sign_in"
-      click_link "Sign in with FaceBook"
+      post "/users/auth/facebook"
+      follow_redirect!
     end
 
     assert session["devise.facebook_data"]
@@ -84,49 +87,80 @@ class OmniauthableIntegrationTest < Devise::IntegrationTest
     assert_current_url "/"
     assert_contain "You have signed up successfully."
     assert_contain "Hello User user@example.com"
-    refute session["devise.facebook_data"]
+    assert_not session["devise.facebook_data"]
   end
 
   test "cleans up session on cancel" do
     assert_no_difference "User.count" do
-      visit "/users/sign_in"
-      click_link "Sign in with FaceBook"
+      post "/users/auth/facebook"
+      follow_redirect!
     end
 
     assert session["devise.facebook_data"]
     visit "/users/cancel"
-    assert !session["devise.facebook_data"]
+    assert_not session["devise.facebook_data"]
   end
 
   test "cleans up session on sign in" do
     assert_no_difference "User.count" do
-      visit "/users/sign_in"
-      click_link "Sign in with FaceBook"
+      post "/users/auth/facebook"
+      follow_redirect!
     end
 
     assert session["devise.facebook_data"]
     sign_in_as_user
-    assert !session["devise.facebook_data"]
+    assert_not session["devise.facebook_data"]
   end
 
   test "sign in and send remember token if configured" do
-    visit "/users/sign_in"
-    click_link "Sign in with FaceBook"
+    post "/users/auth/facebook"
+    follow_redirect!
     assert_nil warden.cookies["remember_user_token"]
 
     stub_action!(:sign_in_facebook) do
       create_user
-      visit "/users/sign_in"
-      click_link "Sign in with FaceBook"
+      post "/users/auth/facebook"
+      follow_redirect!
       assert warden.authenticated?(:user)
       assert warden.cookies["remember_user_token"]
+    end
+  end
+
+  test "authorization path via GET when Omniauth allowed_request_methods includes GET" do
+    original_allowed = OmniAuth.config.allowed_request_methods
+    OmniAuth.config.allowed_request_methods = [:get, :post]
+
+    get "/users/auth/facebook"
+
+    assert_response(:redirect)
+  ensure
+    OmniAuth.config.allowed_request_methods = original_allowed
+  end
+
+  test "authorization path via GET when Omniauth allowed_request_methods doesn't include GET" do
+    original_allowed = OmniAuth.config.allowed_request_methods
+    OmniAuth.config.allowed_request_methods = [:post]
+
+    assert_raises(ActionController::RoutingError) do
+      get "/users/auth/facebook"
+    end
+  ensure
+    OmniAuth.config.allowed_request_methods = original_allowed
+  end
+
+  test "generates a link to authenticate with provider" do
+    visit "/users/sign_in"
+    assert_select "form[action=?][method=post]", "/users/auth/facebook" do
+      assert_select "input[type=submit][value=?]", "Sign in with FaceBook"
     end
   end
 
   test "generates a proper link when SCRIPT_NAME is set" do
     header 'SCRIPT_NAME', '/q'
     visit "/users/sign_in"
-    assert_select "a", href: "/q/users/auth/facebook"
+    assert_select "form[action=?][method=post]", "/q/users/auth/facebook" do
+      assert_select "input[type=submit][value=?]", "Sign in with FaceBook"
+    end
   end
 
   test "handles callback error parameter according to the specification" do
@@ -139,10 +173,10 @@ class OmniauthableIntegrationTest < Devise::IntegrationTest
   test "handles other exceptions from OmniAuth" do
     OmniAuth.config.mock_auth[:facebook] = :invalid_credentials
 
-    visit "/users/sign_in"
-    click_link "Sign in with FaceBook"
+    post "/users/auth/facebook"
+    follow_redirect!
+    follow_redirect!
 
-    assert_current_url "/users/sign_in"
     assert_contain 'Could not authenticate you from FaceBook because "Invalid credentials".'
   end
 end

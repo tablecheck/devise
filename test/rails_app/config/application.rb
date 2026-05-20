@@ -2,6 +2,7 @@
 
 require File.expand_path('../boot', __FILE__)
 
+require "logger"
 require "action_controller/railtie"
 require "action_mailer/railtie"
 require "rails/test_unit/railtie"
@@ -33,21 +34,20 @@ module RailsApp
     # config.assets.enabled = false
 
     config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
-    rails_version = Gem::Version.new(Rails.version)
-    if DEVISE_ORM == :active_record &&
-       rails_version >= Gem::Version.new('4.2.0') &&
-       rails_version < Gem::Version.new('5.1.0')
-      config.active_record.raise_in_transactional_callbacks = true
-    end
 
     # This was used to break devise in some situations
     config.to_prepare do
       Devise::SessionsController.layout "application"
     end
 
-    # Remove this check once Rails 5.0 support is removed.
-    if Devise::Test.rails52_and_up?
-      Rails.application.config.active_record.sqlite3.represent_boolean_as_integer = true
+    if DEVISE_ORM == :active_record
+      if Devise::Test.rails70?
+        config.active_record.legacy_connection_handling = false
+      end
+    end
+
+    if Devise::Test.rails70_and_up?
+      config.active_support.cache_format_version = 7.0
     end
   end
 end

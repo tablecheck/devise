@@ -73,13 +73,12 @@ class FailureTest < ActiveSupport::TestCase
     instance_eval(&block)
   end
 
-  def call_failure(env_params={})
+  def call_failure(env_params = {})
     env = {
       'REQUEST_URI' => 'http://test.host/',
       'HTTP_HOST' => 'test.host',
       'REQUEST_METHOD' => 'GET',
       'warden.options' => { scope: :user },
-      'rack.session' => {},
       'action_dispatch.request.formats' => Array(env_params.delete('formats') || Mime[:html]),
       'rack.input' => "",
       'warden' => OpenStruct.new(message: nil)
@@ -185,20 +184,42 @@ class FailureTest < ActiveSupport::TestCase
 
     test 'uses the proxy failure message as symbol' do
       call_failure('warden' => OpenStruct.new(message: :invalid))
-      assert_equal 'Invalid Email or password.', @request.flash[:alert]
+      assert_equal 'Invalid email or password.', @request.flash[:alert]
       assert_equal 'http://test.host/users/sign_in', @response.second["Location"]
     end
 
     test 'supports authentication_keys as a Hash for the flash message' do
       swap Devise, authentication_keys: { email: true, login: true } do
         call_failure('warden' => OpenStruct.new(message: :invalid))
-        assert_equal 'Invalid Email, Login or password.', @request.flash[:alert]
+        assert_equal 'Invalid email, login or password.', @request.flash[:alert]
       end
+    end
+
+    test 'downcases authentication_keys for the flash message' do
+      call_failure('warden' => OpenStruct.new(message: :invalid))
+      assert_equal 'Invalid email or password.', @request.flash[:alert]
+    end
+
+    test 'humanizes the flash message' do
+      call_failure('warden' => OpenStruct.new(message: :invalid))
+      assert_equal @request.flash[:alert], @request.flash[:alert].humanize
     end
 
     test 'uses custom i18n options' do
       call_failure('warden' => OpenStruct.new(message: :does_not_exist), app: FailureWithI18nOptions)
       assert_equal 'User Steve does not exist', @request.flash[:alert]
+    end
+
+    test 'respects the i18n locale passed via warden options when redirecting' do
+      call_failure('warden' => OpenStruct.new(message: :invalid), 'warden.options' => { locale: :"pt-BR" })
+
+      assert_equal 'Email ou senha inválidos.', @request.flash[:alert]
+      assert_equal 'http://test.host/users/sign_in', @response.second["Location"]
+
+      call_failure('warden' => OpenStruct.new(message: :invalid), 'warden.options' => { locale: :de })
+
+      assert_equal 'E-Mail oder Passwort ist ungültig.', @request.flash[:alert]
+      assert_equal 'http://test.host/users/sign_in', @response.second["Location"]
     end
 
     test 'uses the proxy failure message as string' do
@@ -214,14 +235,18 @@ class FailureTest < ActiveSupport::TestCase
 
     test 'set up a default message' do
       call_failure
-      assert_match(/You are being/, @response.last.body)
-      assert_match(/redirected/, @response.last.body)
-      assert_match(/users\/sign_in/, @response.last.body)
+      if Devise::Test.rails71_and_up?
+        assert_empty @response.last.body
+      else
+        assert_match(/You are being/, @response.last.body)
+        assert_match(/redirected/, @response.last.body)
+        assert_match(/users\/sign_in/, @response.last.body)
+      end
     end
 
     test 'works for any navigational format' do
-      swap Devise, navigational_formats: [:xml] do
-        call_failure('formats' => Mime[:xml])
+      swap Devise, navigational_formats: [:json] do
+        call_failure('formats' => Mime[:json])
         assert_equal 302, @response.first
       end
     end
@@ -236,7 +261,7 @@ class FailureTest < ActiveSupport::TestCase
 
   context 'For HTTP request' do
     test 'return 401 status' do
-      call_failure('formats' => Mime[:xml])
+      call_failure('formats' => Mime[:json])
       assert_equal 401, @response.first
     end
 
@@ -258,13 +283,13 @@ class FailureTest < ActiveSupport::TestCase
     end
 
     test 'return WWW-authenticate headers if model allows' do
-      call_failure('formats' => Mime[:xml])
+      call_failure('formats' => Mime[:json])
       assert_equal 'Basic realm="Application"', @response.second["WWW-Authenticate"]
     end
 
     test 'does not return WWW-authenticate headers if model does not allow' do
       swap Devise, http_authenticatable: false do
-        call_failure('formats' => Mime[:xml])
+        call_failure('formats' => Mime[:json])
         assert_nil @response.second["WWW-Authenticate"]
       end
     end
@@ -278,7 +303,13 @@ class FailureTest < ActiveSupport::TestCase
 
     test 'uses the failure message as response body' do
       call_failure('formats' => Mime[:xml], 'warden' => OpenStruct.new(message: :invalid))
-      assert_match '<error>Invalid Email or password.</error>', @response.third.body
+      assert_match '<error>Invalid email or password.</error>', @response.third.body
+    end
+
+    test 'respects the i18n locale passed via warden options when responding to HTTP request' do
+      call_failure('formats' => Mime[:json], 'warden' => OpenStruct.new(message: :invalid), 'warden.options' => { locale: :"pt-BR" })
+
+      assert_equal %({"error":"Email ou senha inválidos."}), @response.third.body
     end
 
     context 'on ajax call' do
@@ -326,8 +357,8 @@ class FailureTest < ActiveSupport::TestCase
         "warden" => stub_everything
       }
       call_failure(env)
-      assert @response.third.body.include?('<h2>Log in</h2>')
-      assert @response.third.body.include?('Invalid Email or password.')
+      assert_includes @response.third.body, '<h2>Log in</h2>'
+      assert_includes @response.third.body, 'Invalid email or password.'
     end
 
     test 'calls the original controller if not confirmed email' do
@@ -337,8 +368,8 @@ class FailureTest < ActiveSupport::TestCase
         "warden" => stub_everything
       }
       call_failure(env)
-      assert @response.third.body.include?('<h2>Log in</h2>')
-      assert @response.third.body.include?('You have to confirm your email address before continuing.')
+      assert_includes @response.third.body, '<h2>Log in</h2>'
+      assert_includes @response.third.body, 'You have to confirm your email address before continuing.'
     end
 
     test 'calls the original controller if inactive account' do
@@ -348,8 +379,8 @@ class FailureTest < ActiveSupport::TestCase
         "warden" => stub_everything
       }
       call_failure(env)
-      assert @response.third.body.include?('<h2>Log in</h2>')
-      assert @response.third.body.include?('Your account is not activated yet.')
+      assert_includes @response.third.body, '<h2>Log in</h2>'
+      assert_includes @response.third.body, 'Your account is not activated yet.'
     end
 
     if Rails.application.config.respond_to?(:relative_url_root)
@@ -361,20 +392,86 @@ class FailureTest < ActiveSupport::TestCase
             "warden" => stub_everything
           }
           call_failure(env)
-          assert @response.third.body.include?('<h2>Log in</h2>')
-          assert @response.third.body.include?('Invalid Email or password.')
-          assert_equal @request.env["SCRIPT_NAME"], '/sample'
-          assert_equal @request.env["PATH_INFO"], '/users/sign_in'
+          assert_includes @response.third.body, '<h2>Log in</h2>'
+          assert_includes @response.third.body, 'Invalid email or password.'
+          assert_equal '/sample', @request.env["SCRIPT_NAME"]
+          assert_equal '/users/sign_in', @request.env["PATH_INFO"]
         end
+      end
+    end
+
+    test 'respects the i18n locale passed via warden options when recalling original controller' do
+      env = {
+        "warden.options" => { recall: "devise/sessions#new", attempted_path: "/users/sign_in", locale: :"pt-BR" },
+        "devise.mapping" => Devise.mappings[:user],
+        "warden" => stub_everything
+      }
+      call_failure(env)
+
+      assert_includes @response.third.body, '<h2>Log in</h2>'
+      assert_includes @response.third.body, 'Email ou senha inválidos.'
+    end
+
+    # TODO: remove conditional/else when supporting only responders 3.1+
+    if ActionController::Responder.respond_to?(:error_status=)
+      test 'respects the configured responder `error_status` for the status code' do
+        swap Devise.responder, error_status: :unprocessable_entity do
+          env = {
+            "warden.options" => { recall: "devise/sessions#new", attempted_path: "/users/sign_in" },
+            "devise.mapping" => Devise.mappings[:user],
+            "warden" => stub_everything
+          }
+          call_failure(env)
+
+          assert_equal 422, @response.first
+          assert_includes @response.third.body, 'Invalid email or password.'
+        end
+      end
+
+      test 'respects the configured responder `redirect_status` if the recall app returns a redirect status code' do
+        swap Devise.responder, redirect_status: :see_other do
+          env = {
+            "warden.options" => { recall: "devise/registrations#cancel", attempted_path: "/users/cancel" },
+            "devise.mapping" => Devise.mappings[:user],
+            "warden" => stub_everything
+          }
+          call_failure(env)
+
+          assert_equal 303, @response.first
+        end
+      end
+    else
+      test 'uses default hardcoded responder `error_status` for the status code since responders version does not support configuring it' do
+        env = {
+          "warden.options" => { recall: "devise/sessions#new", attempted_path: "/users/sign_in" },
+          "devise.mapping" => Devise.mappings[:user],
+          "warden" => stub_everything
+        }
+        call_failure(env)
+
+        assert_equal 200, @response.first
+        assert_includes @response.third.body, 'Invalid email or password.'
+      end
+
+      test 'users default hardcoded responder `redirect_status` for the status code since responders version does not support configuring it' do
+        env = {
+          "warden.options" => { recall: "devise/registrations#cancel", attempted_path: "/users/cancel" },
+          "devise.mapping" => Devise.mappings[:user],
+          "warden" => stub_everything
+        }
+        call_failure(env)
+
+        assert_equal 302, @response.first
       end
     end
   end
 
   context "Lazy loading" do
     test "loads" do
-      assert_equal Devise::FailureApp.new.lazy_loading_works?, "yes it does"
+      assert_equal "yes it does", Devise::FailureApp.new.lazy_loading_works?
     end
   end
+
   context "Without Flash Support" do
     test "returns to the default redirect location without a flash message" do
       call_failure request_klass: RequestWithoutFlashSupport

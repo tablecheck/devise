@@ -15,6 +15,7 @@ class DeviseController < Devise.parent_controller.constantize
   end
 
   prepend_before_action :assert_is_devise_resource!
+  self.responder = Devise.responder
   respond_to :html if mimes_for_respond_to.empty?
 
   # Override prefixes to consider the scoped view.
@@ -30,6 +31,19 @@ class DeviseController < Devise.parent_controller.constantize
     else
       super
     end
+  end
+
+  # Override internal methods to exclude `_prefixes` from action methods since
+  # we override it above.
+  #
+  # There was an intentional change in Rails 7.1 that will allow it to become
+  # an action method because it's a public method of a non-abstract controller,
+  # but we also can't make this abstract because it can affect potential actions
+  # defined in the parent controller, so instead we ensure `_prefixes` is going
+  # to be considered internal. (and thus, won't become an action method.)
+  # Ref: https://github.com/rails/rails/pull/48699
+  def self.internal_methods #:nodoc:
+    super << :_prefixes
   end
 
   protected
@@ -112,7 +126,7 @@ MESSAGE
     end
 
     if authenticated && resource = warden.user(resource_name)
-      flash[:alert] = I18n.t("devise.failure.already_authenticated")
+      set_flash_message(:alert, 'already_authenticated', scope: 'devise.failure')
       redirect_to after_sign_in_path_for(resource)
     end
   end
@@ -184,7 +198,7 @@ MESSAGE
     options[:default] = Array(options[:default]).unshift(kind.to_sym)
     options[:resource_name] = resource_name
     options = devise_i18n_options(options)
-    I18n.t("#{options[:resource_name]}.#{kind}", options)
+    I18n.t("#{options[:resource_name]}.#{kind}", **options)
   end
 
   # Controllers inheriting DeviseController are advised to override this

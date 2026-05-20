@@ -48,7 +48,7 @@ module Devise
       included do
         before_create :generate_confirmation_token, if: :confirmation_required?
         after_create :skip_reconfirmation_in_callback!, if: :send_confirmation_notification?
-        if defined?(ActiveRecord) && self < ActiveRecord::Base # ActiveRecord
+        if Devise::Orm.active_record?(self) # ActiveRecord
           after_commit :send_on_create_confirmation_instructions, on: :create, if: :send_confirmation_notification?
           after_commit :send_reconfirmation_instructions, on: :update, if: :reconfirmation_required?
         else # Mongoid
@@ -76,7 +76,7 @@ module Devise
       # Confirm a user by setting it's confirmed_at to actual time. If the user
       # is already confirmed, add an error to email field. If the user is invalid
       # add errors
-      def confirm(args={})
+      def confirm(args = {})
         pending_any_confirmation do
           if confirmation_period_expired?
             self.errors.add(:email, :confirmation_period_expired,
@@ -258,44 +258,25 @@ module Devise
           generate_confirmation_token && save(validate: false)
         end
 
-        if Devise.activerecord51?
-          def postpone_email_change_until_confirmation_and_regenerate_confirmation_token
-            @reconfirmation_required = true
-            self.unconfirmed_email = self.email
-            self.email = self.email_in_database
-            self.confirmation_token = nil
-            generate_confirmation_token
-          end
-        else
-          def postpone_email_change_until_confirmation_and_regenerate_confirmation_token
-            @reconfirmation_required = true
-            self.unconfirmed_email = self.email
-            self.email = self.email_was
-            self.confirmation_token = nil
-            generate_confirmation_token
-          end
+        def postpone_email_change_until_confirmation_and_regenerate_confirmation_token
+          @reconfirmation_required = true
+          # Force unconfirmed_email to be updated, even if the value hasn't changed, to prevent a
+          # race condition which could allow an attacker to confirm an email they don't own. See #5783.
+          devise_unconfirmed_email_will_change!
+          self.unconfirmed_email = self.email
+          self.email = self.devise_email_in_database
+          self.confirmation_token = nil
+          generate_confirmation_token
         end
 
-        if Devise.activerecord51?
-          def postpone_email_change?
-            postpone = self.class.reconfirmable &&
-              will_save_change_to_email? &&
-              !@bypass_confirmation_postpone &&
-              self.email.present? &&
-              (!@skip_reconfirmation_in_callback || !self.email_in_database.nil?)
-            @bypass_confirmation_postpone = false
-            postpone
-          end
-        else
-          def postpone_email_change?
-            postpone = self.class.reconfirmable &&
-              email_changed? &&
-              !@bypass_confirmation_postpone &&
-              self.email.present? &&
-              (!@skip_reconfirmation_in_callback || !self.email_was.nil?)
-            @bypass_confirmation_postpone = false
-            postpone
-          end
+        def postpone_email_change?
+          postpone = self.class.reconfirmable &&
+            devise_will_save_change_to_email? &&
+            !@bypass_confirmation_postpone &&
+            self.email.present? &&
+            (!@skip_reconfirmation_in_callback || !self.devise_email_in_database.nil?)
+          @bypass_confirmation_postpone = false
+          postpone
         end
 
         def reconfirmation_required?
@@ -334,7 +315,7 @@ module Devise
         # confirmation instructions to it. If not, try searching for a user by unconfirmed_email
         # field. If no user is found, returns a new user with an email not found error.
         # Options must contain the user email
-        def send_confirmation_instructions(attributes={})
+        def send_confirmation_instructions(attributes = {})
           confirmable = find_by_unconfirmed_email_with_errors(attributes) if reconfirmable
           unless confirmable.try(:persisted?)
             confirmable = find_or_initialize_with_errors(confirmation_keys, attributes, :not_found)
@@ -348,7 +329,19 @@ module Devise
         # If the user is already confirmed, create an error for the user
         # Options must have the confirmation_token
         def confirm_by_token(confirmation_token)
+          # When the `confirmation_token` parameter is blank, if there are any users with a blank
+          # `confirmation_token` in the database, the first one would be confirmed here.
+          # The error is being manually added here to ensure no users are confirmed by mistake.
+          # This was done in the model for convenience, since validation errors are automatically
+          # displayed in the view.
+          if confirmation_token.blank?
+            confirmable = new
+            confirmable.errors.add(:confirmation_token, :blank)
+            return confirmable
+          end
+
           confirmable = find_first_by_auth_conditions(confirmation_token: confirmation_token)
+
           unless confirmable
             confirmation_digest = Devise.token_generator.digest(self, :confirmation_token, confirmation_token)
             confirmable = find_or_initialize_with_error_by(:confirmation_token, confirmation_digest)

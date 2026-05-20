@@ -30,7 +30,7 @@ module Devise
 
     alias :name :singular
 
-    # Receives an object and find a scope for it. If a scope cannot be found,
+    # Receives an object and finds a scope for it. If a scope cannot be found,
     # raises an error. If a symbol is given, it's considered to be the scope.
     def self.find_scope!(obj)
       obj = obj.devise_scope if obj.respond_to?(:devise_scope)
@@ -46,7 +46,7 @@ module Devise
       raise "Could not find a valid mapping for #{obj.inspect}"
     end
 
-    def self.find_by_path!(path, path_type=:fullpath)
+    def self.find_by_path!(path, path_type = :fullpath)
       Devise.mappings.each_value { |m| return m if path.include?(m.send(path_type)) }
       raise "Could not find a valid mapping for path #{path.inspect}"
     end

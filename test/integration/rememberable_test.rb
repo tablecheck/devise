@@ -3,7 +3,7 @@
 require 'test_helper'
 
 class RememberMeTest < Devise::IntegrationTest
-  def create_user_and_remember(add_to_token='')
+  def create_user_and_remember(add_to_token = '')
     user = create_user
     user.remember_me!
     raw_cookie = User.serialize_into_cookie(user).tap { |a| a[1] << add_to_token }
@@ -12,13 +12,7 @@ class RememberMeTest < Devise::IntegrationTest
   end
 
   def generate_signed_cookie(raw_cookie)
-    request = if Devise::Test.rails51? || Devise::Test.rails52_and_up?
-      ActionController::TestRequest.create(Class.new) # needs a "controller class"
-    elsif Devise::Test.rails5?
-      ActionController::TestRequest.create
-    else
-      ActionController::TestRequest.new
-    end
+    request = ActionController::TestRequest.create(Class.new) # needs a "controller class"
     request.cookie_jar.signed['raw_cookie'] = raw_cookie
     request.cookie_jar['raw_cookie']
   end
@@ -41,12 +35,12 @@ class RememberMeTest < Devise::IntegrationTest
   test 'handle unverified requests gets rid of caches' do
     swap ApplicationController, allow_forgery_protection: true do
       post exhibit_user_url(1)
-      refute warden.authenticated?(:user)
+      assert_not warden.authenticated?(:user)
 
       create_user_and_remember
       post exhibit_user_url(1)
       assert_equal "User is not authenticated", response.body
-      refute warden.authenticated?(:user)
+      assert_not warden.authenticated?(:user)
     end
   end
 
@@ -59,8 +53,8 @@ class RememberMeTest < Devise::IntegrationTest
           authenticity_token: "oops",
           user: { email: "jose.valim@gmail.com", password: "123456", remember_me: "1" }
         }
-      refute warden.authenticated?(:user)
-      refute request.cookies['remember_user_token']
+      assert_not warden.authenticated?(:user)
+      assert_not request.cookies['remember_user_token']
     end
   end
 
@@ -140,7 +134,7 @@ class RememberMeTest < Devise::IntegrationTest
       get root_path
       current_remember_token = request.cookies['remember_user_token']
 
-      refute_equal old_remember_token, current_remember_token
+      assert_not_equal old_remember_token, current_remember_token
     end
   end
 
@@ -166,13 +160,13 @@ class RememberMeTest < Devise::IntegrationTest
     get root_path
     assert_response :success
     assert warden.authenticated?(:user)
-    refute warden.authenticated?(:admin)
+    assert_not warden.authenticated?(:admin)
   end
 
   test 'do not remember with invalid token' do
     create_user_and_remember('add')
     get users_path
-    refute warden.authenticated?(:user)
+    assert_not warden.authenticated?(:user)
     assert_redirected_to new_user_session_path
   end
 
@@ -180,7 +174,7 @@ class RememberMeTest < Devise::IntegrationTest
     create_user_and_remember
     swap Devise, remember_for: 0.days do
       get users_path
-      refute warden.authenticated?(:user)
+      assert_not warden.authenticated?(:user)
       assert_redirected_to new_user_session_path
     end
   end
@@ -191,11 +185,11 @@ class RememberMeTest < Devise::IntegrationTest
     assert warden.authenticated?(:user)
 
     delete destroy_user_session_path
-    refute warden.authenticated?(:user)
+    assert_not warden.authenticated?(:user)
     assert_nil warden.cookies['remember_user_token']
 
     get users_path
-    refute warden.authenticated?(:user)
+    assert_not warden.authenticated?(:user)
   end
 
   test 'changing user password expires remember me token' do
@@ -205,7 +199,7 @@ class RememberMeTest < Devise::IntegrationTest
     user.save!
 
     get users_path
-    refute warden.authenticated?(:user)
+    assert_not warden.authenticated?(:user)
   end
 
   test 'valid sign in calls after_remembered callback' do
