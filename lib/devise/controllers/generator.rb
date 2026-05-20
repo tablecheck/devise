@@ -96,6 +96,12 @@ module Devise
       end
 
       def set_devise_router
+        # The default :devise scope's routes live in the host app's main router,
+        # so Devise.router_name must stay nil (→ Devise.available_router_name == :main_app).
+        # Setting it to :devise would route URL helpers through `view.devise`, which
+        # only exists if something is literally `mount`ed `as: :devise`.
+        return if scope == :devise
+
         @parent.class_variable_set('@@devise_controller_scope', scope)
         @parent.class_eval do
           before_action ->{ Devise.router_name = self.class.class_variable_get('@@devise_controller_scope') }
