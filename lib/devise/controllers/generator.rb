@@ -1,5 +1,36 @@
 module Devise
   module Controllers
+    # Generates per-scope Devise controllers at boot for each scope in
+    # `Devise.controller_scopes` (configured per application).
+    #
+    # For a scope `:my_scope`, this creates the constants
+    #   MyScope::Devise::BaseController     < MyScope::ApplicationController
+    #   MyScope::Devise::SessionsController < MyScope::Devise::BaseController
+    #   ... (and Passwords/Registrations/Confirmations/Unlocks/OmniauthCallbacks)
+    #
+    # Devise behavior is injected by including the corresponding `Devise::Mixins::*`
+    # module into each generated class. The mixin pattern exists because Ruby has
+    # single inheritance: each generated controller must inherit from the host
+    # engine's `ApplicationController` (so it picks up the engine's layout, helpers,
+    # before_actions, etc.), so Devise's per-controller logic cannot also live in
+    # the parent class — it has to be a module.
+    #
+    # IMPORTANT — lexical constant resolution:
+    # Engine controllers in the host app write
+    #   module MyScope
+    #     class SessionsController < Devise::SessionsController
+    #       ...
+    #     end
+    #   end
+    # Ruby's lexical lookup finds `Devise` in the enclosing `MyScope` module
+    # first, so the bare reference `Devise::SessionsController` resolves to
+    # `MyScope::Devise::SessionsController` (this generator's output), NOT
+    # to the gem's top-level `Devise::SessionsController`. That is what makes the
+    # engine controller inherit from the engine's `ApplicationController` chain.
+    #
+    # Do not "simplify" by dropping the mixin pattern or this generator — the
+    # engine controllers depend on the lexical-resolution trick to inherit from
+    # `<Scope>::ApplicationController` instead of the gem's `DeviseController`.
     class Generator
 
       AVAILABLE_CONTROLLERS = [:confirmation, :omniauth_callback, :password, :registration, :session, :unlock]
