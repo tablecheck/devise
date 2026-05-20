@@ -21,6 +21,13 @@ module Devise
       app.deprecators[:devise] = Devise.deprecator if app.respond_to?(:deprecators)
     end
 
+    # Generate the Devise's Controllers (per request for development & once for production) for all the specified controller_scopes.
+    config.to_prepare do
+      Devise.controller_scopes.each do |scope|
+        Devise::Controllers::Generator.generate scope
+      end
+    end
+
     initializer "devise.url_helpers" do
       Devise.include_helpers(Devise::Controllers)
     end
